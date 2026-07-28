@@ -757,7 +757,8 @@ function updateBar(stop,l2){
     document.getElementById('tour-name').textContent=stop.name;
     document.getElementById('tour-desc').textContent=stop.desc||'';
     const data=stop.data;
-    if(data&&data.l2.length){
+    if(data&&data.l2.length&&l2Opened.has(data.id)){
+      // only show L2 chips once the user has clicked "Show Level 2 info"
       const chips=data.l2.map((l2item,i)=>`<span class="chip" onclick="gotoL2(${mainStops.indexOf(stop)},${i})">${l2item.name}</span>`).join('');
       document.getElementById('tour-chips').innerHTML=chips;
     } else {
