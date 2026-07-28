@@ -117,16 +117,24 @@ html,body{width:100%;height:100%;overflow:hidden;font-family:'Lato',sans-serif;f
   font-family:'Lato',sans-serif;font-size:13px;color:#888;
   margin-bottom:32px;text-align:center;line-height:1.5;
 }
+#pw-input-wrap{position:relative;width:100%;margin-bottom:12px;}
 #pw-input{
-  width:100%;padding:13px 16px;border:1.5px solid #e0e0e0;
+  width:100%;padding:13px 44px 13px 16px;border:1.5px solid #e0e0e0;
   border-radius:10px;font-family:'Lato',sans-serif;
-  font-size:15px;font-weight:700;letter-spacing:.12em;color:#111;
+  font-size:15px;font-weight:400;letter-spacing:.08em;color:#111;
   outline:none;transition:border-color .15s;
-  text-align:center;margin-bottom:12px;
+  text-align:center;
 }
+#pw-input::placeholder{font-weight:300;color:#c0c0c0;letter-spacing:.02em;}
 #pw-input:focus{border-color:#111;}
 #pw-input.shake{animation:shake .35s ease;}
 #pw-input.error{border-color:#e03e3e;}
+#pw-eye{
+  position:absolute;right:13px;top:50%;transform:translateY(-50%);
+  background:none;border:none;cursor:pointer;padding:4px;
+  color:#bbb;display:flex;align-items:center;transition:color .15s;
+}
+#pw-eye:hover{color:#555;}
 @keyframes shake{
   0%,100%{transform:translateX(0)}
   20%{transform:translateX(-6px)}
@@ -441,9 +449,14 @@ body.sitemap .card{opacity:0;pointer-events:none}
     </svg>
     <div class="pw-title">Protected Document</div>
     <div class="pw-sub">This is a private &amp; confidential file.<br>Enter the password to continue.</div>
-    <input id="pw-input" type="password" placeholder="Enter password"
-      autocomplete="off" spellcheck="false"
-      onkeydown="if(event.key==='Enter')checkPw()">
+    <div id="pw-input-wrap">
+      <input id="pw-input" type="password" placeholder="Enter password"
+        autocomplete="off" spellcheck="false"
+        onkeydown="if(event.key==='Enter')checkPw()">
+      <button id="pw-eye" type="button" onclick="togglePwEye()" title="Show/hide password">
+        <i id="pw-eye-icon" data-lucide="eye" style="width:18px;height:18px;stroke-width:1.8"></i>
+      </button>
+    </div>
     <div id="pw-error"></div>
     <button id="pw-submit" onclick="checkPw()">Unlock</button>
     <div class="pw-hint">All rights reserved · Bharti Enterprises IA Explorer</div>
@@ -1303,6 +1316,14 @@ buildIslandNav();
 // ═══════════════════════════════════════════
 // PASSWORD GATE
 // ═══════════════════════════════════════════
+function togglePwEye(){
+  const inp=document.getElementById('pw-input');
+  const icon=document.getElementById('pw-eye-icon');
+  const show=inp.type==='password';
+  inp.type=show?'text':'password';
+  icon.setAttribute('data-lucide',show?'eye-off':'eye');
+  lucide.createIcons();
+}
 function checkPw(){
   const val=document.getElementById('pw-input').value.trim().toUpperCase();
   const errEl=document.getElementById('pw-error');
