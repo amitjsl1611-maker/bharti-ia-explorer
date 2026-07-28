@@ -1037,8 +1037,6 @@ function setMode(m){
   document.getElementById('btn-sm').classList.toggle('active',m==='sitemap');
   canvas.style.display=isSMMode?'none':'block';
   smCanvas.style.display=isSMMode?'block':'none';
-  document.getElementById('tourbar').style.display=isSMMode?'none':'';
-  document.getElementById('island-nav').style.display=isSMMode?'none':'';
   if(isSMMode){
     if(!smBuilt){buildSitemapCanvas();smBuilt=true;}
     const vpw=container.clientWidth||1280,vph=container.clientHeight||600;
