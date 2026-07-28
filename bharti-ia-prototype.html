@@ -416,16 +416,16 @@ body.sitemap .card{opacity:0;pointer-events:none}
 
 /* ── BACK TO SITEMAP BUTTON ── */
 #back-to-sm{
-  position:fixed;bottom:82px;left:50%;transform:translateX(-50%);
+  position:fixed;bottom:108px;left:50%;transform:translateX(-50%);
   font-size:11px;font-weight:700;color:#6B3FD4;letter-spacing:.01em;
-  cursor:pointer;z-index:200;
-  background:rgba(255,255,255,.92);padding:5px 16px;border-radius:20px;
+  cursor:pointer;z-index:201;
+  background:rgba(255,255,255,.95);padding:5px 16px;border-radius:20px;
   border:1.5px solid rgba(107,63,212,.35);
   font-family:'Lato',sans-serif;
   display:none;opacity:0;
   transition:opacity .3s,background .15s;
   white-space:nowrap;
-  box-shadow:0 2px 12px rgba(107,63,212,.12);
+  box-shadow:0 2px 12px rgba(107,63,212,.15),0 1px 4px rgba(0,0,0,.06);
 }
 #back-to-sm.visible{opacity:1;}
 #back-to-sm:hover{background:rgba(107,63,212,.07);}
@@ -1347,24 +1347,41 @@ function focusL2(secId,l2idx){
 // MODE SWITCHING
 // ═══════════════════════════════════════════
 function setMode(m){
+  // Capture where we are before switching
+  const fromSecId=isSMMode?(SECTIONS[smSecIdx]?.id||null):currentSectionId;
+  const fromL2idx=isSMMode?-1:currentL2idx;
+
   isSMMode=m==='sitemap';
   document.body.classList.toggle('sitemap',isSMMode);
   document.getElementById('btn-ia').classList.toggle('active',m==='ia');
   document.getElementById('btn-sm').classList.toggle('active',m==='sitemap');
   canvas.style.display=isSMMode?'none':'block';
   smCanvas.style.display=isSMMode?'block':'none';
+
   if(isSMMode){
     hideBackToSm();
+    clearHighlight(); // prevent .dimmed bleeding onto sm-canvas pills
     if(!smBuilt){buildSitemapCanvas();smBuilt=true;}
     const vpw=container.clientWidth||1280,vph=container.clientHeight||600;
-    // Zoom to show ~5 sections clearly so pills are big and readable
     smSc=Math.min(vpw/1800,vph/560)*0.92;
     smTx=vpw/2-1560*smSc;smTy=vph/2-280*smSc;
     applyTransformSM();
     smSecIdx=0;updateSmNavBtns();syncIslandNav(null);
+    // Navigate to where user was in IA
+    if(fromSecId){
+      const idx=SECTIONS.findIndex(s=>s.id===fromSecId);
+      if(idx>=0){smSecIdx=idx;focusSection(fromSecId);}
+    }
   } else {
     hideBackToSm();
-    resetView();
+    // Navigate to where user was in sitemap
+    if(fromSecId){
+      const idx=mainStops.findIndex(s=>s.id===fromSecId);
+      if(idx>-1){currentStop=idx;applyStop(idx,fromL2idx);}
+      else resetView();
+    } else {
+      resetView();
+    }
   }
 }
 
