@@ -579,7 +579,7 @@ const container=document.getElementById('container');
 const smCanvas=document.getElementById('sm-canvas');
 const smSvg=document.getElementById('sm-svg');
 let smTx=0,smTy=0,smSc=0.3;
-let smBuilt=false,isSMMode=false;
+let smBuilt=false,isSMMode=false,smSecIdx=0;
 // Section X positions used in sitemap — must match buildSitemapCanvas
 const SM_SEC_CXS=[200,540,880,1220,1560,1900,2240,2580,2920];
 const SM_L1_Y_REF=148; // L1 pill top in sitemap
@@ -991,29 +991,36 @@ function updateNavButtons(){
   document.getElementById('btn-next').disabled=currentStop>=mainStops.length-1&&currentL2idx<0;
 }
 function nextStop(){
+  if(isSMMode){
+    if(smSecIdx<SECTIONS.length-1){smSecIdx++;focusSection(SECTIONS[smSecIdx].id);}
+    updateSmNavBtns();return;
+  }
   const stop=mainStops[currentStop];
   const sec=stop?stop.data:null;
   if(currentL2idx>-1){
-    // In an L2 item — step to next L2 or advance to next L1
     const next=currentL2idx+1;
     if(next<sec.l2.length){applyStop(currentStop,next);return;}
     if(currentStop<mainStops.length-1){currentStop++;applyStop(currentStop);}
     return;
   }
-  // At L1 — if L2 is currently open for this section, enter it
   if(sec&&sec.l2.length&&l2Opened.has(sec.id)){applyStop(currentStop,0);return;}
-  // L2 closed or no L2 — jump to next L1
   if(currentStop<mainStops.length-1){currentStop++;applyStop(currentStop);}
 }
 function prevStop(){
+  if(isSMMode){
+    if(smSecIdx>0){smSecIdx--;focusSection(SECTIONS[smSecIdx].id);}
+    updateSmNavBtns();return;
+  }
   if(currentL2idx>-1){
-    // In L2 — step back through L2 or return to L1
     if(currentL2idx>0){applyStop(currentStop,currentL2idx-1);return;}
     applyStop(currentStop,-1);
     return;
   }
-  // At L1 — go to previous L1
   if(currentStop>0){currentStop--;applyStop(currentStop);}
+}
+function updateSmNavBtns(){
+  document.getElementById('btn-prev').disabled=smSecIdx<=0;
+  document.getElementById('btn-next').disabled=smSecIdx>=SECTIONS.length-1;
 }
 function startTour(){
   document.getElementById('overview-hint').classList.add('hidden');
@@ -1078,8 +1085,10 @@ function focusSection(secId){
     const vpw=container.clientWidth||1280,vph=container.clientHeight||600;
     const targetSc=Math.min(vpw*0.55/300, vph*0.75/contentH, 2.2);
     const focusCy=sec.l2.length>0?(SM_L1_Y_REF+(220+sec.l2.length*50)/2):SM_L1_Y_REF+13;
+    smSecIdx=idx;
     syncIslandNav(secId);
     smFlyTo(cx,focusCy,targetSc);
+    updateSmNavBtns();
     return;
   }
   const idx=mainStops.findIndex(s=>s.id===secId);
@@ -1106,6 +1115,7 @@ function setMode(m){
     smSc=Math.min(vpw/3100,vph/780)*0.86;
     smTx=vpw/2-1560*smSc;smTy=vph/2-380*smSc;
     applyTransformSM();
+    smSecIdx=0;updateSmNavBtns();
   } else {
     resetView();
   }
