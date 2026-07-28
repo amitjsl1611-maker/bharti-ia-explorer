@@ -386,12 +386,18 @@ body.sitemap .card{opacity:0;pointer-events:none}
 }
 .section-box.visible{opacity:1}
 
-/* sitemap show-l2-btn inherits from .show-l2-btn — no extra CSS needed */
-#sm-canvas .show-l2-btn{position:absolute;transform:translateX(-50%);}
-#sm-canvas .show-l2-btn.open .show-l2-rings{display:none;}
-#sm-canvas .show-l2-btn.open .show-l2-label{
-  background:#2f97da;color:#fff;border-color:#2f97da;
+/* ── SITEMAP L2 TOGGLE BUTTON (simple pill — IA uses the pulse-ring style) ── */
+.sm-l2-toggle{
+  position:absolute;cursor:pointer;
+  background:#fff;border:1.5px solid #3D6B35;border-radius:20px;
+  padding:5px 12px;font-size:9px;font-weight:800;color:#3D6B35;
+  font-family:'Lato',sans-serif;white-space:nowrap;z-index:5;
+  letter-spacing:.03em;transition:background .15s,color .15s;
 }
+.sm-l2-toggle:hover{background:#3D6B35;color:#fff;}
+.sm-l2-toggle.utility{border-color:#1A3A5C;color:#1A3A5C}
+.sm-l2-toggle.utility:hover{background:#1A3A5C;color:#fff}
+.sm-l2-toggle.open{background:#2f97da;color:#fff;border-color:#2f97da;}
 
 /* ── IA TOAST ── */
 #ia-toast{
@@ -809,17 +815,12 @@ function buildSitemapCanvas(){
     const cls=sec.utility?'pill-l1 utility':'pill-l1';
     smPill(sec.name,cls,cx,SM_L1_Y,SM_L1_PW,SM_L1_PH);
     if(!sec.l2.length)return;
-    // Toggle button — same structure as IA's show-l2-btn
+    // Toggle button — simple green pill (IA uses the pulse-ring style)
     const toggleBtn=document.createElement('div');
-    toggleBtn.className='show-l2-btn visible';
+    toggleBtn.className='sm-l2-toggle'+(sec.utility?' utility':'');
     toggleBtn.dataset.smsec=sec.id;
-    toggleBtn.style.cssText=`left:${cx}px;top:${SM_L1_Y+SM_L1_PH+6}px`;
-    toggleBtn.innerHTML=`
-      <div class="show-l2-rings">
-        <div class="ping-ring"></div><div class="ping-ring"></div><div class="ping-ring"></div>
-        <div class="show-l2-dot"></div>
-      </div>
-      <div class="show-l2-label">Show pages ↓</div>`;
+    toggleBtn.textContent='+ Show pages';
+    toggleBtn.style.cssText=`left:${cx-46}px;top:${SM_L1_Y+SM_L1_PH+8}px`;
     toggleBtn.onclick=(e)=>{e.stopPropagation();toggleSmL2(sec.id);};
     smCanvas.appendChild(toggleBtn);
     // SVG group for L2 connectors (hidden by default)
@@ -859,11 +860,10 @@ function toggleSmL2(secId){
   });
   const g=smSvg.querySelector(`.sm-l2g[data-smsec="${secId}"]`);
   if(g)g.style.display=nowOpen?'':'none';
-  const btn=smCanvas.querySelector(`.show-l2-btn[data-smsec="${secId}"]`);
+  const btn=smCanvas.querySelector(`.sm-l2-toggle[data-smsec="${secId}"]`);
   if(btn){
     btn.classList.toggle('open',nowOpen);
-    const lbl=btn.querySelector('.show-l2-label');
-    if(lbl) lbl.textContent=nowOpen?'− Hide pages':'Show pages ↓';
+    btn.textContent=nowOpen?'− Hide pages':'+ Show pages';
   }
   // Re-focus to show expanded content if open
   if(nowOpen){
@@ -1344,7 +1344,7 @@ function focusSection(secId){
     // Only account for L2 height when that section is actually expanded
     const l2Vis=smL2Open.has(sec.id)&&sec.l2.length>0;
     const contentH=l2Vis?(220+sec.l2.length*50+60):(SM_L1_Y_REF+56);
-    const targetSc=Math.min(vpw*0.62/220, vph*0.72/contentH, 1.9);
+    const targetSc=Math.min(vpw*0.62/300, vph*0.72/contentH, 1.3);
     const focusCy=l2Vis?(SM_L1_Y_REF+(220+sec.l2.length*50)/2):SM_L1_Y_REF+13;
     smSecIdx=idx;
     syncIslandNav(secId);
@@ -1413,7 +1413,7 @@ function setMode(m){
 // PAN + ZOOM EVENTS
 // ═══════════════════════════════════════════
 container.addEventListener('mousedown',e=>{
-  if(e.button!==0||e.target.closest('.pill,.chip,.show-l2-btn'))return;
+  if(e.button!==0||e.target.closest('.pill,.chip,.show-l2-btn,.sm-l2-toggle'))return;
   isPanning=true;panSX=e.clientX;panSY=e.clientY;
   panTX=isSMMode?smTx:tx;panTY=isSMMode?smTy:ty;
   container.classList.add('panning');
@@ -1482,9 +1482,9 @@ document.addEventListener('keydown',e=>{
 buildCanvas();
 buildIslandNav();
 
-// Default mode: sitemap, full overview (no section pre-focused)
+// Default mode: sitemap, focused on Home
 setMode('sitemap');
-syncIslandNav('home'); // highlight Home tab without flying into it
+focusSection('home');
 
 // ═══════════════════════════════════════════
 // PASSWORD GATE
