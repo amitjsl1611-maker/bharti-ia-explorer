@@ -1,0 +1,739 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Bharti.com — IA Explorer</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html,body{width:100%;height:100%;overflow:hidden;background:#fff;font-family:'Inter',sans-serif;font-size:13px;color:#111}
+
+/* ── TOP BAR ── */
+#topbar{
+  position:fixed;top:0;left:0;right:0;height:52px;
+  background:rgba(255,255,255,.96);backdrop-filter:blur(8px);
+  border-bottom:1px solid #e8e8e8;
+  display:flex;align-items:center;justify-content:space-between;
+  padding:0 20px;z-index:200;
+}
+.tb-left{display:flex;align-items:center;gap:16px}
+.tb-brand{font-size:12px;font-weight:600;letter-spacing:.04em;color:#111}
+.tb-sep{width:1px;height:18px;background:#e0e0e0}
+.tb-file{font-size:11px;color:#888;letter-spacing:.02em}
+.tb-center{display:flex;align-items:center;gap:2px;background:#f4f4f4;border-radius:8px;padding:3px}
+.mode-btn{
+  padding:5px 16px;border-radius:6px;border:none;cursor:pointer;
+  font-size:11px;font-weight:500;letter-spacing:.04em;
+  background:transparent;color:#666;transition:all .2s;
+}
+.mode-btn.active{background:#fff;color:#111;box-shadow:0 1px 4px rgba(0,0,0,.1)}
+.tb-right{display:flex;align-items:center;gap:8px}
+.zoom-btn{
+  width:28px;height:28px;border:1px solid #e0e0e0;border-radius:6px;
+  background:#fff;cursor:pointer;font-size:14px;color:#555;
+  display:flex;align-items:center;justify-content:center;
+  transition:border-color .2s;
+}
+.zoom-btn:hover{border-color:#aaa}
+.zoom-label{font-size:11px;color:#999;min-width:40px;text-align:center}
+.kbd-hint{font-size:10px;color:#bbb;letter-spacing:.02em}
+
+/* ── CANVAS CONTAINER ── */
+#container{
+  position:fixed;top:52px;left:0;right:0;bottom:96px;
+  overflow:hidden;cursor:grab;
+  background-color:#ffffff;
+  background-image:radial-gradient(circle,#d4d4d4 1px,transparent 1px);
+  background-size:24px 24px;
+}
+#container.panning{cursor:grabbing}
+
+/* ── CANVAS ── */
+#canvas{
+  position:absolute;top:0;left:0;
+  width:22400px;height:2000px;
+  transform-origin:0 0;
+  will-change:transform;
+}
+
+/* ── SVG OVERLAY ── */
+#svg{position:absolute;top:0;left:0;width:22400px;height:2000px;pointer-events:none;overflow:visible}
+
+/* ── PILLS ── */
+.pill{
+  position:absolute;display:flex;align-items:center;justify-content:center;
+  text-align:center;border-radius:6px;cursor:pointer;user-select:none;
+  font-weight:600;white-space:nowrap;transition:box-shadow .2s,opacity .3s;
+  font-family:'Inter',sans-serif;
+}
+.pill:hover{box-shadow:0 4px 16px rgba(0,0,0,.18)}
+.pill-start{background:#F5B840;color:#1A1A1A;font-size:13px;height:38px}
+.pill-l1{background:#3D6B35;color:#fff;font-size:12px;height:34px;letter-spacing:.01em}
+.pill-l1.utility{background:#1A3A5C;color:#fff}
+.pill-l2{background:#1A4040;color:#fff;font-size:10.5px;height:30px}
+.pill-l2.utility{background:#1A3050}
+.pill-l3{background:#333;color:#fff;font-size:10px;height:26px;border-radius:4px}
+.pill.highlight{box-shadow:0 0 0 3px #fff,0 0 0 5px #6B3FD4;z-index:10}
+.pill.dimmed{opacity:.25}
+
+/* ── CARDS (IA mode only) ── */
+.card{
+  position:absolute;background:#fff;border:1.5px solid #e0e0e0;border-radius:8px;
+  overflow:hidden;width:440px;transition:opacity .3s,border-color .2s;
+}
+.card:hover{border-color:#aaa}
+.card.ia-el{opacity:1}
+body.sitemap .card{opacity:0;pointer-events:none}
+.card-desc{
+  padding:10px 14px;font-size:9.5px;font-style:italic;color:#777;
+  border-bottom:1px solid #f0f0f0;background:#fafafa;line-height:1.5;
+}
+.band{padding:5px 14px;font-size:9px;font-weight:600;letter-spacing:.08em}
+.band-i{background:#E6F4F4;color:#1A4040}
+.band-a{background:#FFF8E8;color:#7A5500}
+.bullet{padding:3px 14px;font-size:9.5px;color:#333;line-height:1.5}
+
+/* ── TOUR BAR ── */
+#tourbar{
+  position:fixed;bottom:0;left:0;right:0;height:96px;
+  background:#fff;border-top:1px solid #e8e8e8;
+  display:flex;align-items:center;gap:0;z-index:200;
+  padding:0 0;
+}
+.tb-nav{
+  display:flex;align-items:center;justify-content:center;
+  width:72px;height:100%;cursor:pointer;border:none;background:transparent;
+  color:#111;font-size:18px;font-weight:400;
+  transition:background .2s;flex-shrink:0;
+}
+.tb-nav:hover{background:#f7f7f7}
+.tb-nav:disabled{color:#ddd;cursor:default}
+.tb-nav:disabled:hover{background:transparent}
+#tour-content{
+  flex:1;padding:12px 20px;display:flex;flex-direction:column;justify-content:center;gap:6px;
+  border-left:1px solid #f0f0f0;border-right:1px solid #f0f0f0;overflow:hidden;
+}
+#tour-name{
+  font-size:16px;font-weight:600;color:#111;letter-spacing:-.01em;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+}
+#tour-desc{font-size:11px;color:#888;line-height:1.4;max-height:30px;overflow:hidden}
+#tour-chips{display:flex;gap:6px;flex-wrap:nowrap;overflow:hidden;margin-top:2px}
+.chip{
+  padding:4px 11px;border-radius:20px;border:1px solid #e0e0e0;
+  background:#f8f8f8;font-size:10px;color:#555;cursor:pointer;
+  white-space:nowrap;transition:all .2s;flex-shrink:0;
+  font-family:'Inter',sans-serif;
+}
+.chip:hover{background:#1A4040;color:#fff;border-color:#1A4040}
+.chip.l3-chip{background:#f0f0f0;border-color:#ccc;color:#444}
+.tb-right-panel{
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  gap:8px;padding:0 20px;flex-shrink:0;border-left:1px solid #f0f0f0;
+}
+#tour-counter{font-size:11px;color:#aaa;letter-spacing:.04em}
+#tour-jump{
+  padding:5px 10px;border:1px solid #e0e0e0;border-radius:6px;
+  font-size:11px;color:#555;background:#fff;cursor:pointer;max-width:160px;
+  font-family:'Inter',sans-serif;
+}
+#btn-tour{
+  padding:7px 18px;border-radius:20px;border:none;cursor:pointer;
+  font-size:11px;font-weight:600;letter-spacing:.04em;
+  background:#1A4040;color:#fff;transition:background .2s;
+}
+#btn-tour:hover{background:#0e2b2b}
+#btn-tour.active{background:#c0392b}
+#btn-tour.active:hover{background:#a93226}
+
+/* ── BREADCRUMB ── */
+#breadcrumb{
+  font-size:11px;color:#aaa;padding:0 20px;
+  display:flex;align-items:center;gap:8px;flex-shrink:0;
+  border-right:1px solid #f0f0f0;height:100%;
+  flex-direction:column;justify-content:center;gap:4px;min-width:140px;
+}
+.bc-step{cursor:pointer;transition:color .2s}
+.bc-step:hover{color:#1A4040}
+.bc-step.active{color:#111;font-weight:500}
+.bc-arrow{color:#ddd}
+
+/* ── OVERVIEW OVERLAY ── */
+#overview-hint{
+  position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);
+  background:rgba(255,255,255,.95);border:1px solid #e8e8e8;border-radius:12px;
+  padding:28px 36px;text-align:center;z-index:300;
+  box-shadow:0 8px 40px rgba(0,0,0,.12);max-width:400px;
+  transition:opacity .4s;
+}
+#overview-hint h2{font-size:20px;font-weight:600;margin-bottom:8px}
+#overview-hint p{font-size:12px;color:#888;line-height:1.6;margin-bottom:20px}
+#overview-hint .btn-primary{
+  padding:10px 28px;border-radius:20px;border:none;cursor:pointer;
+  background:#1A4040;color:#fff;font-size:13px;font-weight:600;
+  font-family:'Inter',sans-serif;margin-right:10px;transition:background .2s;
+}
+#overview-hint .btn-primary:hover{background:#0e2b2b}
+#overview-hint .btn-sec{
+  padding:10px 20px;border-radius:20px;border:1px solid #e0e0e0;cursor:pointer;
+  background:#fff;color:#555;font-size:13px;font-family:'Inter',sans-serif;
+  transition:border-color .2s;
+}
+#overview-hint .btn-sec:hover{border-color:#aaa}
+#overview-hint.hidden{opacity:0;pointer-events:none}
+
+/* ── MINIMAP ── */
+#minimap{
+  position:fixed;bottom:112px;right:16px;
+  width:180px;height:50px;
+  background:rgba(255,255,255,.9);border:1px solid #e8e8e8;border-radius:8px;
+  overflow:hidden;z-index:150;
+  box-shadow:0 2px 12px rgba(0,0,0,.08);
+}
+#minimap-viewport{
+  position:absolute;border:2px solid #6B3FD4;border-radius:3px;
+  background:rgba(107,63,212,.08);pointer-events:none;
+  transition:all .3s;
+}
+
+/* ── SECTION HIGHLIGHT BOX ── */
+.section-box{
+  position:absolute;border-radius:10px;pointer-events:none;
+  opacity:0;transition:opacity .4s;
+  border:2px solid #6B3FD4;
+  background:rgba(107,63,212,.04);
+}
+.section-box.visible{opacity:1}
+</style>
+</head>
+<body>
+
+<!-- TOP BAR -->
+<div id="topbar">
+  <div class="tb-left">
+    <div class="tb-brand">Bharti Enterprises</div>
+    <div class="tb-sep"></div>
+    <div class="tb-file">Information Architecture &nbsp;v1.0</div>
+  </div>
+  <div class="tb-center">
+    <button class="mode-btn active" id="btn-ia" onclick="setMode('ia')">IA View</button>
+    <button class="mode-btn" id="btn-sm" onclick="setMode('sitemap')">Sitemap</button>
+  </div>
+  <div class="tb-right">
+    <button class="zoom-btn" onclick="zoom(1.25)">+</button>
+    <div class="zoom-label" id="zoom-label">7%</div>
+    <button class="zoom-btn" onclick="zoom(0.8)">−</button>
+    <button class="zoom-btn" onclick="resetView()" title="Reset view (R)">⊡</button>
+    <div class="tb-sep"></div>
+    <div class="kbd-hint">← → Navigate &nbsp;·&nbsp; Scroll Zoom &nbsp;·&nbsp; Drag Pan</div>
+  </div>
+</div>
+
+<!-- CANVAS CONTAINER -->
+<div id="container">
+  <div id="canvas">
+    <svg id="svg"></svg>
+  </div>
+</div>
+
+<!-- MINIMAP -->
+<div id="minimap"><div id="minimap-viewport"></div></div>
+
+<!-- OVERVIEW HINT -->
+<div id="overview-hint">
+  <h2>Bharti.com &nbsp;·&nbsp; IA Explorer</h2>
+  <p>Full information architecture across 9 primary sections and 38 page templates.<br>Pan freely or take a guided tour.</p>
+  <button class="btn-primary" onclick="startTour()">▶ &nbsp;Start Guided Tour</button>
+  <button class="btn-sec" onclick="closeHint()">Explore freely</button>
+</div>
+
+<!-- TOUR BAR -->
+<div id="tourbar">
+  <div id="breadcrumb">
+    <span class="bc-step" id="bc-l1" onclick="goBackToL1()">—</span>
+  </div>
+  <button class="tb-nav" id="btn-prev" onclick="prevStop()" disabled>‹</button>
+  <div id="tour-content">
+    <div id="tour-name">Ready to explore</div>
+    <div id="tour-desc">Click "Start Tour" or drag the canvas to navigate freely</div>
+    <div id="tour-chips"></div>
+  </div>
+  <div class="tb-right-panel">
+    <div id="tour-counter">—</div>
+    <select id="tour-jump" onchange="jumpToSection(this.value)">
+      <option value="">Jump to section…</option>
+    </select>
+    <button id="btn-tour" onclick="toggleTour()">▶ &nbsp;Start Tour</button>
+  </div>
+  <button class="tb-nav" id="btn-next" onclick="nextStop()">›</button>
+</div>
+
+<script>
+// ═══════════════════════════════════════════
+// DATA MODEL
+// ═══════════════════════════════════════════
+const CW=440, SLOT=560;
+const L1_Y=310, L1_CARD_Y=390;
+const L2_SY=830, L2_Y=870, L2_CARD_Y=944;
+const L3_SY=1344, L3_Y=1384, L3_CARD_Y=1458;
+const SPINE_Y=258, START_CX=10660, START_Y=145;
+
+const SECTIONS=[
+  {id:'home',name:'HOME',cx:350,utility:false,
+   desc:'Entry point — establishes global stature and routes each audience within two screens',
+   info:['Hero — global positioning statement + 50th year milestone (1976 → 2026)','Portfolio at a Glance — 6 sector cards + Featured Businesses carousel','50-Year Timeline · From the Chairman · Latest News · Footer'],
+   actions:['Navigate via primary/utility nav (5+4 sections)','Click sector → OUR BUSINESSES filtered · Click business → Detail page','Click map → Global Presence · Click timeline → Heritage'],
+   l2:[]},
+  {id:'who',name:'WHO WE ARE',cx:2200,utility:false,
+   desc:'Identity hub — founding story, leadership, heritage, and governance',
+   info:['7 sub-sections covering the full Bharti narrative','From founding (1976) through 50 years to global institution (2026)','Leadership portraits · governance framework · corporate structure'],
+   actions:['Navigate sub-sections via in-page tabs','→ Our Businesses · → Global Presence (cross-links)'],
+   l2:[
+    {name:'Our Story',cx:520,info:['Founding: bicycle components (1976) → global conglomerate','Scale: 6 sectors · 15+ countries · 650M+ customers'],actions:['→ Our Businesses · → Heritage · → Chairman\'s Message']},
+    {name:"Chairman's Message",cx:1080,info:['Full signed statement — Sunil Bharti Mittal','Editorial hero portrait · bio sidebar · Padma Bhushan 2007'],actions:['Download as PDF · → Board & Leadership']},
+    {name:'Purpose & Values',cx:1640,info:['"Building a brighter tomorrow" — 4 pillars','5 values: Empowerment · Entrepreneurship · Transparency · Impact · Flexibility'],actions:['→ Our Story · → Board & Leadership']},
+    {name:'Heritage & Milestones',cx:2200,info:['Interactive horizontal timeline: 1976 → 2026','Anchors: 1995 Airtel · 2002 IPO · 2010 Africa · 2023 Eutelsat · 2024 BT Group','2026 — 50th year special visual treatment'],actions:['Scroll timeline · Click milestone → expanded panel']},
+    {name:'Corporate Structure',cx:2760,info:['Holding structure diagram','Ownership tiers: 100% / majority / minority / strategic stake'],actions:['Download PDF · → Our Businesses · → Governance']},
+    {name:'Board & Leadership',cx:3320,info:['Sunil Bharti Mittal — Founder & Chairman (featured)','Group VCs · Joint MDs · Business CEOs: Gopal Vittal, Sunil Kumar Taldar'],actions:['Click leader → expanded bio modal · → Governance']},
+    {name:'Governance',cx:3880,info:['Governance philosophy + board committees','Code of Conduct · Ombudsperson Office overview'],actions:['Download Code of Conduct PDF'],
+     l3:[{name:'Policies & Ethics',cx:3880},{name:'Ombudsperson',cx:4440}]},
+   ]},
+  {id:'biz',name:'OUR BUSINESSES',cx:7180,utility:false,
+   desc:'13 businesses and investments across 6 sectors — filterable hub + individual detail pages',
+   info:['Portfolio Hub — filterable grid (sector + geography toggle)','6 sector groups covering all 13 companies/investments','Business Detail Template — one reusable page for all company pages'],
+   actions:['Filter by sector or geography · Click business → Detail page','→ Global Presence (highlight footprint)'],
+   l2:[
+    {name:'Portfolio Hub',cx:5220,info:['Filter: ALL / sector / geography toggle','Business cards: logo · tag · positioning · key metric · 14 total businesses'],actions:['Filter · Click → Business Detail · → Global Presence']},
+    {name:'Digital Connectivity',cx:5780,info:['Bharti Airtel — 380M+ customers (NSE: BHARTIARTL)','Airtel Africa — 14 countries (LSE: AAF) · Indus Towers · Emtel · Airtel Vodafone CI'],actions:['Click → Business Detail · → Global Presence']},
+    {name:'Space & Technology',cx:6340,info:['Eutelsat — GEO + LEO satellite operator','OneWeb merger 2023 · Euronext Paris: ETL · Africa, ME, Europe coverage'],actions:['Click → Business Detail · → Global Presence']},
+    {name:'Financial Services',cx:6900,info:['Bharti Life Insurance — JV with ICICI Prudential (2024)','Term, health, investment-linked products · targeting under-insured India'],actions:['Click → Business Detail']},
+    {name:'Infra & Real Estate',cx:7460,info:['Bharti Real Estate — Delhi NCR focus · 20M+ sq ft developed','Worldmark Aerocity · Worldmark Gurugram · The Bharti'],actions:['Click → Business Detail']},
+    {name:'Hospitality & Food',cx:8020,info:['Norlake Hospitality — premium hotels, Delhi NCR',"Gourmet Investments — specialty food incl. Jamie's Italian India"],actions:['Click → Business Detail']},
+    {name:'Emerging Ventures',cx:8580,info:['BT Group — ~24.5% stake · UK telecoms leader','Haier India — consumer electronics JV · Delonex — Pan-African upstream O&G'],actions:['Click → Business Detail · → Global Presence']},
+    {name:'Business Detail Tmpl',cx:9140,info:['Logo + hero · sector/geo tags · one-line positioning','Overview · metrics · geography · leadership · milestones · Bharti ownership · related'],actions:['→ Visit company website (external) · → Portfolio Hub']},
+   ]},
+  {id:'global',name:'GLOBAL PRESENCE',cx:9880,utility:false,
+   desc:'Single interactive page — Bharti\'s international footprint across 5 regions + satellite arc',
+   info:['Interactive world map with regional highlights','Hover/tap region → which businesses + key metric per region','5 regions: Africa (14 countries) · South Asia · UK & Europe · Mauritius · Space'],
+   actions:['Hover region → businesses + metric callout','Filter by sector or business · Click region → Business Detail'],
+   l2:[]},
+  {id:'impact',name:'IMPACT',cx:11280,utility:false,
+   desc:'Bharti\'s social and environmental impact — Foundation, sustainability, community',
+   info:['Bharti Foundation — 3.7M+ children reached since 2000','Sustainability — group ESG approach + annual report','Community Initiatives — Airtel Africa + Airtel India programs'],
+   actions:['Navigate sub-sections via in-page tabs','→ Who We Are / Values (cross-link)'],
+   l2:[
+    {name:'Bharti Foundation',cx:10720,info:['Satya Bharti Schools — rural model schools, girl-child focus','QSP · QSP at Scale · Higher Education · Impact Stories'],actions:['Navigate program page · Read Impact Story · → Sustainability']},
+    {name:'Sustainability',cx:11280,info:['Environmental: Nxtra 140,208 MWh renewables · Airtel net-zero roadmap','Annual Sustainability Report (downloadable PDF)'],actions:['Download Report · → Bharti Foundation · → Governance']},
+    {name:'Community Initiatives',cx:11840,info:['Airtel Africa — digital skills, health, agriculture programs','Airtel India — digital inclusion, women connectivity, rural broadband'],actions:['→ Bharti Foundation · → Impact Stories']},
+   ]},
+  {id:'news',name:'NEWSROOM',cx:13420,utility:false,
+   desc:'Editorial news hub — press releases, Bharti Today magazine, media resources',
+   info:['Latest News — unified feed with content-type filters','Press Releases — archive filterable by year/company/topic','Bharti Today — in-house editorial magazine (individual articles indexable)','Media Centre — brand assets, leadership photography, media kit'],
+   actions:['Navigate sub-sections via in-page tabs','Search Newsroom · → Media Centre for press assets'],
+   l2:[
+    {name:'Latest News',cx:12580,info:['Featured story hero treatment (most recent/significant)','Filter: All | Press Releases | Bharti Today | In the News'],actions:['Filter · Click → individual content page']},
+    {name:'Press Releases',cx:13140,info:['Filter: Year | Company | Topic (M&A · partnerships · financial · awards)','PR Detail: full body · media contact · related releases (3 auto-suggested)'],actions:['Filter · Click → PR Detail · Download PDF · Share']},
+    {name:'Bharti Today',cx:13700,info:['Issue archive + Special Editions (milestone issues, 50th year)','Article grid — filter by topic: Leadership, Innovation, Sustainability, Community, People'],actions:['Browse by issue · Filter · Click → full article page']},
+    {name:'Media Centre',cx:14260,info:['Brand Assets: logo files (PNG, SVG, EPS) light + dark variants · brand guidelines','Leadership Photography · Media Kit · Fact Sheet (downloadable PDFs)'],actions:['Download logos/photos · Download Media Kit · Contact media relations']},
+   ]},
+  {id:'inv',name:'INVESTORS',cx:16400,utility:true,
+   desc:'IR hub for Bharti Enterprises and its four publicly listed subsidiaries',
+   info:['Context: Bharti Enterprises private; 4 entities listed on NSE/BSE/LSE/Euronext','Financial Info · Shareholder Info · Listed Entities · Contact IR','Governance cross-linked to Who We Are (no duplicate content)'],
+   actions:['Navigate sub-sections via tabs','→ Governance (cross-link) · → Contact IR'],
+   l2:[
+    {name:'Investor Overview',cx:15000,info:['Context: private group, multiple listed subsidiaries','Group financial scale · growth strategy narrative · quick links to entities'],actions:['→ Listed Entities · → Financial Information · → Contact IR']},
+    {name:'Listed Entities',cx:15560,info:['Bharti Airtel — NSE: BHARTIARTL / BSE: 532454','Airtel Africa — LSE: AAF · Indus Towers — NSE: INDUSTOWER · Eutelsat — ETL'],actions:['Click → entity external IR page · → Business Detail']},
+    {name:'Financial Information',cx:16120,info:['Annual Reports — downloadable by year across entities','Results & Presentations — quarterly · Earnings Calls — recordings + transcripts'],actions:['Download PDFs · Filter by entity/year · Listen recording']},
+    {name:'Shareholder Information',cx:16680,info:['Shareholding Pattern — category breakdown, quarterly update','Dividends — history + payment calendar · AGM — notices, results, minutes'],actions:['Download PDFs · Register for upcoming AGM']},
+    {name:'Governance ↗',cx:17240,info:['Cross-link only — content lives in WHO WE ARE → Governance','Boards, committees, Code of Conduct, Ombudsperson'],actions:['→ Who We Are / Governance']},
+    {name:'Contact IR',cx:17800,info:['Enquiry type: Institutional | Analyst | Retail | Media | Other','Form adapts by type · IR team contact + mailing address'],actions:['Select type · Submit form · Send email directly']},
+   ]},
+  {id:'careers',name:'CAREERS',cx:19380,utility:true,
+   desc:'Employer brand and open roles hub — utility nav destination',
+   info:['Life@Bharti · Work Culture · Graduate Programs · Open Roles (ATS integrated)','Employer brand: employee stories, D&I, benefits, awards','Job listings filterable by company, location, function, level'],
+   actions:['Navigate sub-sections via tabs','→ Open Roles · → Graduate Programs'],
+   l2:[
+    {name:'Life@Bharti',cx:18540,info:['Video/photo testimonials from employees across businesses','D&I statement + data · Benefits overview · Employer awards'],actions:['Watch videos · → Open Roles']},
+    {name:'Work Culture',cx:19100,info:['Empowerment + entrepreneurship as lived values','L&D: leadership academies, functional learning, global mobility'],actions:['→ Open Roles · → Life@Bharti']},
+    {name:'Graduate Programs',cx:19660,info:['Duration, structure, rotation logic + eligibility','Application timeline · Alumni: where they are now (role/business)'],actions:['Apply now (ATS) · → Open Roles for experienced hires']},
+    {name:'Open Roles',cx:20220,info:['Filter: Company | Location | Function | Level','Job Detail: full JD · who you\'ll work with · apply button (ATS)'],actions:['Filter · Click → Job Detail · Apply via ATS · Save / Share']},
+   ]},
+  {id:'contact',name:'CONTACT',cx:20960,utility:true,
+   desc:'Audience-routed contact page with entity directory and validated form',
+   info:['Audience selector: Business Partner | Investor | Media | Careers | General','Form fields adapt per audience type · routes to right entity','Entity directory · Registered office · Social links · Ombudsperson callout'],
+   actions:['Select enquiry type → form adapts','Submit form · → Contact IR (IR) · → Ombudsperson (compliance)'],
+   l2:[]},
+];
+
+// ═══════════════════════════════════════════
+// CAMERA STATE
+// ═══════════════════════════════════════════
+let tx=0, ty=0, sc=0.065;
+let isPanning=false, panSX=0, panSY=0, panTX=0, panTY=0;
+let tourActive=false, currentStop=-1, currentL2idx=-1;
+let currentSectionId=null;
+
+const canvas=document.getElementById('canvas');
+const svg=document.getElementById('svg');
+const container=document.getElementById('container');
+
+// ═══════════════════════════════════════════
+// RENDER ENGINE
+// ═══════════════════════════════════════════
+function elt(tag,cls,style=''){
+  const e=document.createElement(tag);
+  if(cls)e.className=cls;
+  if(style)e.style.cssText=style;
+  return e;
+}
+function svgEl(tag,attrs={}){
+  const e=document.createElementNS('http://www.w3.org/2000/svg',tag);
+  Object.entries(attrs).forEach(([k,v])=>e.setAttribute(k,v));
+  return e;
+}
+function addLine(x1,y1,x2,y2,cls=''){
+  const l=svgEl('line',{x1,y1,x2,y2,stroke:'#8B5FD4','stroke-width':'2','stroke-linecap':'round'});
+  if(cls)l.classList.add(cls);
+  svg.appendChild(l);return l;
+}
+function addDot(cx,cy){
+  svg.appendChild(svgEl('circle',{cx,cy,r:'4',fill:'#8B5FD4'}));
+}
+function pill(label,cls,x,y,w,h,dataset={}){
+  const p=elt('div',`pill ${cls}`);
+  p.textContent=label;
+  p.style.cssText=`left:${x-w/2}px;top:${y}px;width:${w}px;height:${h}px`;
+  Object.entries(dataset).forEach(([k,v])=>p.dataset[k]=v);
+  canvas.appendChild(p);return p;
+}
+function card(cx,y,w,desc,info,actions,cls=''){
+  const c=elt('div',`card ia-el ${cls}`);
+  c.style.cssText=`left:${cx-w/2}px;top:${y}px`;
+  let h=`<div class="card-desc">${desc}</div>`;
+  h+=`<div class="band band-i">INFORMATION</div>`;
+  info.forEach(i=>h+=`<div class="bullet">– ${i}</div>`);
+  h+=`<div class="band band-a">ACTIONS</div>`;
+  actions.forEach(a=>h+=`<div class="bullet">→ ${a}</div>`);
+  c.innerHTML=h;canvas.appendChild(c);return c;
+}
+
+// Build everything
+function buildCanvas(){
+  // START
+  pill('BHARTI.COM','pill-start',START_CX,START_Y,200,38);
+  addLine(START_CX,START_Y+38,START_CX,SPINE_Y);
+
+  // Spine
+  const allCX=SECTIONS.map(s=>s.cx);
+  addLine(Math.min(...allCX),SPINE_Y,Math.max(...allCX),SPINE_Y);
+  addDot(START_CX,SPINE_Y);
+
+  SECTIONS.forEach(sec=>{
+    // spine drop to L1
+    addDot(sec.cx,SPINE_Y);
+    addLine(sec.cx,SPINE_Y,sec.cx,L1_Y);
+    // L1 pill
+    const cls=sec.utility?'pill-l1 utility':'pill-l1';
+    const l1p=pill(sec.name,cls,sec.cx,L1_Y,200,34,{section:sec.id});
+    l1p.onclick=()=>focusSection(sec.id);
+    // L1 card
+    card(sec.cx,L1_CARD_Y,CW,sec.desc,sec.info,sec.actions,'l1-card');
+
+    if(!sec.l2.length)return;
+
+    // L2 spread connector
+    const l2cxs=sec.l2.map(l=>l.cx);
+    const l2L=Math.min(...l2cxs), l2R=Math.max(...l2cxs);
+    addLine(sec.cx,L1_Y+34,sec.cx,L2_SY);
+    addDot(sec.cx,L2_SY);
+    if(l2L!==l2R)addLine(l2L,L2_SY,l2R,L2_SY);
+
+    sec.l2.forEach(l2=>{
+      addDot(l2.cx,L2_SY);
+      addLine(l2.cx,L2_SY,l2.cx,L2_Y);
+      // L2 pill
+      const l2cls=sec.utility?'pill-l2 utility':'pill-l2';
+      const l2p=pill(l2.name,l2cls,l2.cx,L2_Y,CW,30,{section:sec.id,l2name:l2.name,l2cx:l2.cx});
+      l2p.onclick=(e)=>{e.stopPropagation();focusL2(sec.id,sec.l2.indexOf(l2))};
+      // L2 card
+      addLine(l2.cx,L2_Y+30,l2.cx,L2_CARD_Y);
+      card(l2.cx,L2_CARD_Y,CW,l2.name,l2.info||[],l2.actions||[]);
+
+      // L3
+      if(l2.l3&&l2.l3.length){
+        const l3cxs=l2.l3.map(l=>l.cx);
+        const l3L=Math.min(...l3cxs),l3R=Math.max(...l3cxs);
+        addLine(l2.cx,L2_CARD_Y+280,l2.cx,L3_SY);
+        addDot(l2.cx,L3_SY);
+        if(l3L!==l3R)addLine(l3L,L3_SY,l3R,L3_SY);
+        l2.l3.forEach(l3=>{
+          addDot(l3.cx,L3_SY);
+          addLine(l3.cx,L3_SY,l3.cx,L3_Y);
+          pill(l3.name,'pill-l3',l3.cx,L3_Y,CW-30,26);
+        });
+      }
+    });
+  });
+}
+
+// ═══════════════════════════════════════════
+// CAMERA
+// ═══════════════════════════════════════════
+function applyTransform(animate=false){
+  canvas.style.transition=animate?'transform .75s cubic-bezier(0.4,0,0.2,1)':'none';
+  canvas.style.transform=`translate(${tx}px,${ty}px) scale(${sc})`;
+  if(animate)setTimeout(()=>canvas.style.transition='none',800);
+  document.getElementById('zoom-label').textContent=Math.round(sc*100)+'%';
+  updateMinimap();
+}
+function flyTo(cx,cy,targetSc,animate=true){
+  const vpw=container.clientWidth, vph=container.clientHeight;
+  tx=vpw/2-cx*targetSc;
+  ty=vph/2-cy*targetSc;
+  sc=targetSc;
+  applyTransform(animate);
+}
+function zoom(factor){
+  const vpw=container.clientWidth, vph=container.clientHeight;
+  const newSc=Math.max(0.04,Math.min(3,sc*factor));
+  tx=vpw/2-(vpw/2-tx)*newSc/sc;
+  ty=vph/2-(vph/2-ty)*newSc/sc;
+  sc=newSc;applyTransform(true);
+}
+function resetView(){flyTo(START_CX,700,0.065,true)}
+
+// Section zoom scales
+function sectionScale(sec){
+  if(!sec.l2.length)return 0.75;
+  const l2cxs=sec.l2.map(l=>l.cx);
+  const span=(Math.max(...l2cxs)-Math.min(...l2cxs))+CW+100;
+  return Math.min(0.65,Math.max(0.18,(container.clientWidth*0.85)/span));
+}
+function l2Scale(){return 0.72}
+
+// ═══════════════════════════════════════════
+// SECTION HIGHLIGHT
+// ═══════════════════════════════════════════
+let highlightBox=null;
+function clearHighlight(){
+  document.querySelectorAll('.pill').forEach(p=>p.classList.remove('highlight','dimmed'));
+  if(highlightBox){highlightBox.remove();highlightBox=null}
+}
+function highlightSection(secId){
+  clearHighlight();
+  const sec=SECTIONS.find(s=>s.id===secId);if(!sec)return;
+  document.querySelectorAll('.pill').forEach(p=>{
+    const matches=p.dataset.section===secId||(p.textContent==='BHARTI.COM');
+    p.classList.toggle('highlight',matches);
+    p.classList.toggle('dimmed',!matches&&p.dataset.section&&p.dataset.section!==secId);
+  });
+}
+function highlightL2(secId,l2idx){
+  clearHighlight();
+  const sec=SECTIONS.find(s=>s.id===secId);if(!sec||!sec.l2[l2idx])return;
+  const l2=sec.l2[l2idx];
+  document.querySelectorAll('.pill').forEach(p=>{
+    const isTarget=p.dataset.section===secId&&p.dataset.l2cx==l2.cx;
+    const isParent=p.textContent===sec.name||p.textContent==='BHARTI.COM';
+    p.classList.toggle('highlight',isTarget||isParent);
+    p.classList.toggle('dimmed',!isTarget&&!isParent&&p.dataset.section);
+  });
+}
+
+// ═══════════════════════════════════════════
+// TOUR LOGIC
+// ═══════════════════════════════════════════
+const mainStops=[
+  {id:'overview',name:'Overview',desc:'Full site structure — 9 primary sections · 38 page templates · 65-80 total URLs',cx:START_CX,cy:600,sc:0.065},
+  ...SECTIONS.map(s=>({id:s.id,name:s.name,desc:s.desc,cx:s.cx,cy:600,sc:sectionScale(s),data:s}))
+];
+
+function buildJumpMenu(){
+  const sel=document.getElementById('tour-jump');
+  mainStops.forEach((s,i)=>{
+    if(i===0)return;
+    const o=document.createElement('option');o.value=i;o.textContent=s.name;sel.appendChild(o);
+  });
+}
+function jumpToSection(val){
+  if(!val)return;
+  currentStop=parseInt(val);currentL2idx=-1;
+  applyStop(currentStop);
+  document.getElementById('tour-jump').value='';
+}
+
+function applyStop(idx,l2idx=-1){
+  const stop=mainStops[idx];
+  if(!stop)return;
+  currentL2idx=l2idx;
+
+  if(l2idx===-1){
+    // L1 stop
+    currentSectionId=stop.id;
+    flyTo(stop.cx,stop.cy,stop.sc||0.2);
+    updateBar(stop,null);
+    if(stop.data)highlightSection(stop.id);
+    else clearHighlight();
+  } else {
+    // L2 stop
+    const sec=stop.data;
+    const l2=sec.l2[l2idx];
+    flyTo(l2.cx,1000,l2Scale());
+    updateBar(stop,l2);
+    highlightL2(stop.id,l2idx);
+  }
+  updateNavButtons();
+}
+function updateBar(stop,l2){
+  if(l2){
+    document.getElementById('tour-name').textContent=l2.name;
+    document.getElementById('tour-desc').textContent=stop.name+' — '+l2.name;
+    document.getElementById('bc-l1').textContent=stop.name;
+    document.getElementById('bc-l1').style.color='#1A4040';
+    // L3 chips if any
+    const chips=(l2.l3||[]).map(l3=>`<span class="chip l3-chip" onclick="void(0)">${l3.name}</span>`).join('');
+    document.getElementById('tour-chips').innerHTML=chips||'';
+  } else {
+    document.getElementById('tour-name').textContent=stop.name;
+    document.getElementById('tour-desc').textContent=stop.desc;
+    document.getElementById('bc-l1').textContent=stop.name;
+    document.getElementById('bc-l1').style.color=stop.id==='overview'?'#aaa':'#111';
+    // L2 chips
+    const data=stop.data;
+    if(data&&data.l2.length){
+      const chips=data.l2.map((l2,i)=>`<span class="chip" onclick="gotoL2(${mainStops.indexOf(stop)},${i})">${l2.name}</span>`).join('');
+      document.getElementById('tour-chips').innerHTML=chips;
+    } else {
+      document.getElementById('tour-chips').innerHTML='';
+    }
+  }
+  const n=mainStops.length-1;
+  document.getElementById('tour-counter').textContent=currentStop===0?'Overview':`${currentStop} / ${n}`;
+}
+function gotoL2(stopIdx,l2idx){
+  currentStop=stopIdx;applyStop(stopIdx,l2idx);
+}
+function goBackToL1(){
+  if(currentL2idx>-1&&currentStop>0){applyStop(currentStop,-1);}
+}
+function updateNavButtons(){
+  document.getElementById('btn-prev').disabled=currentStop<=0&&currentL2idx<0;
+  document.getElementById('btn-next').disabled=currentStop>=mainStops.length-1&&currentL2idx<0;
+}
+function nextStop(){
+  if(currentL2idx>-1){
+    const stop=mainStops[currentStop];
+    const next=currentL2idx+1;
+    if(next<stop.data.l2.length){applyStop(currentStop,next);return;}
+    else{applyStop(currentStop,-1);return;}
+  }
+  if(currentStop<mainStops.length-1){currentStop++;applyStop(currentStop);}
+}
+function prevStop(){
+  if(currentL2idx>-1){applyStop(currentStop,currentL2idx-1>-1?currentL2idx-1:-1);return;}
+  if(currentStop>0){currentStop--;applyStop(currentStop);}
+}
+function startTour(){
+  closeHint();tourActive=true;
+  document.getElementById('btn-tour').textContent='■ Stop Tour';
+  document.getElementById('btn-tour').classList.add('active');
+  currentStop=1;applyStop(1);
+}
+function stopTour(){
+  tourActive=false;
+  document.getElementById('btn-tour').textContent='▶ Start Tour';
+  document.getElementById('btn-tour').classList.remove('active');
+}
+function toggleTour(){tourActive?stopTour():startTour();}
+function closeHint(){document.getElementById('overview-hint').classList.add('hidden')}
+function focusSection(secId){
+  const idx=mainStops.findIndex(s=>s.id===secId);
+  if(idx>-1){currentStop=idx;applyStop(idx);}
+}
+function focusL2(secId,l2idx){
+  const idx=mainStops.findIndex(s=>s.id===secId);
+  if(idx>-1){currentStop=idx;applyStop(idx,l2idx);}
+}
+
+// ═══════════════════════════════════════════
+// MODE SWITCHING
+// ═══════════════════════════════════════════
+function setMode(m){
+  document.body.classList.toggle('sitemap',m==='sitemap');
+  document.getElementById('btn-ia').classList.toggle('active',m==='ia');
+  document.getElementById('btn-sm').classList.toggle('active',m==='sitemap');
+}
+
+// ═══════════════════════════════════════════
+// PAN + ZOOM EVENTS
+// ═══════════════════════════════════════════
+container.addEventListener('mousedown',e=>{
+  if(e.button!==0||e.target.closest('.pill,.chip'))return;
+  isPanning=true;panSX=e.clientX;panSY=e.clientY;panTX=tx;panTY=ty;
+  container.classList.add('panning');canvas.style.transition='none';
+});
+document.addEventListener('mousemove',e=>{
+  if(!isPanning)return;
+  tx=panTX+(e.clientX-panSX);ty=panTY+(e.clientY-panSY);
+  canvas.style.transform=`translate(${tx}px,${ty}px) scale(${sc})`;
+  updateMinimap();
+});
+document.addEventListener('mouseup',()=>{if(isPanning){isPanning=false;container.classList.remove('panning');}});
+container.addEventListener('wheel',e=>{
+  e.preventDefault();canvas.style.transition='none';
+  const f=e.deltaY<0?1.12:1/1.12;
+  const newSc=Math.max(0.04,Math.min(3,sc*f));
+  const rect=container.getBoundingClientRect();
+  const mx=e.clientX-rect.left,my=e.clientY-rect.top;
+  tx=mx-(mx-tx)*newSc/sc;ty=my-(my-ty)*newSc/sc;sc=newSc;
+  applyTransform();
+},{passive:false});
+
+// Keyboard
+document.addEventListener('keydown',e=>{
+  if(e.target.tagName==='SELECT'||e.target.tagName==='INPUT')return;
+  if(e.key==='ArrowRight'||e.key==='ArrowDown')nextStop();
+  if(e.key==='ArrowLeft'||e.key==='ArrowUp')prevStop();
+  if(e.key==='r'||e.key==='R')resetView();
+  if(e.key==='t'||e.key==='T')toggleTour();
+  if(e.key==='m'||e.key==='M')setMode(document.body.classList.contains('sitemap')?'ia':'sitemap');
+  if(e.key==='Escape'){clearHighlight();stopTour();}
+});
+
+// ═══════════════════════════════════════════
+// MINIMAP
+// ═══════════════════════════════════════════
+function updateMinimap(){
+  const mm=document.getElementById('minimap');
+  const vp=document.getElementById('minimap-viewport');
+  const mmW=mm.clientWidth,mmH=mm.clientHeight;
+  const cW=22400,cH=2000;
+  const msX=mmW/cW,msY=mmH/cH;
+  const vpW=container.clientWidth/sc,vpH=container.clientHeight/sc;
+  const vpX=-tx/sc,vpY=-ty/sc;
+  vp.style.left=Math.max(0,vpX*msX)+'px';
+  vp.style.top=Math.max(0,vpY*msY)+'px';
+  vp.style.width=Math.min(mmW,vpW*msX)+'px';
+  vp.style.height=Math.min(mmH,vpH*msY)+'px';
+}
+
+// ═══════════════════════════════════════════
+// INIT
+// ═══════════════════════════════════════════
+buildCanvas();
+buildJumpMenu();
+
+// Initial camera — center on full canvas
+const vpw=container.clientWidth,vph=container.clientHeight;
+tx=vpw/2-START_CX*sc; ty=vph/2-600*sc;
+applyTransform(false);
+updateMinimap();
+
+// Default bar state
+document.getElementById('tour-name').textContent='Bharti.com — Information Architecture';
+document.getElementById('tour-desc').textContent='9 primary sections · 38 page templates · 65–80 total URLs';
+document.getElementById('tour-counter').textContent='—';
+updateNavButtons();
+</script>
+</body>
+</html>
