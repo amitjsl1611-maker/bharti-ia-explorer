@@ -386,21 +386,12 @@ body.sitemap .card{opacity:0;pointer-events:none}
 }
 .section-box.visible{opacity:1}
 
-/* ── SITEMAP L2 TOGGLE BUTTON ── */
-.sm-l2-toggle{
-  position:absolute;
-  cursor:pointer;
-  background:#fff;border:1.5px solid #3D6B35;
-  border-radius:20px;padding:4px 10px;
-  font-size:8.5px;font-weight:800;color:#3D6B35;
-  font-family:'Lato',sans-serif;
-  white-space:nowrap;z-index:5;
-  transition:background .15s,color .15s;
-  letter-spacing:.03em;
+/* sitemap show-l2-btn inherits from .show-l2-btn — no extra CSS needed */
+#sm-canvas .show-l2-btn{position:absolute;transform:translateX(-50%);}
+#sm-canvas .show-l2-btn.open .show-l2-rings{display:none;}
+#sm-canvas .show-l2-btn.open .show-l2-label{
+  background:#2f97da;color:#fff;border-color:#2f97da;
 }
-.sm-l2-toggle:hover{background:#3D6B35;color:#fff;}
-.sm-l2-toggle.utility{border-color:#1A3A5C;color:#1A3A5C}
-.sm-l2-toggle.utility:hover{background:#1A3A5C;color:#fff}
 
 /* ── IA TOAST ── */
 #ia-toast{
@@ -818,12 +809,17 @@ function buildSitemapCanvas(){
     const cls=sec.utility?'pill-l1 utility':'pill-l1';
     smPill(sec.name,cls,cx,SM_L1_Y,SM_L1_PW,SM_L1_PH);
     if(!sec.l2.length)return;
-    // Toggle button below L1 pill
+    // Toggle button — same structure as IA's show-l2-btn
     const toggleBtn=document.createElement('div');
-    toggleBtn.className='sm-l2-toggle'+(sec.utility?' utility':'');
+    toggleBtn.className='show-l2-btn visible';
     toggleBtn.dataset.smsec=sec.id;
-    toggleBtn.textContent='+ Show pages';
-    toggleBtn.style.cssText=`left:${cx-42}px;top:${SM_L1_Y+SM_L1_PH+7}px`;
+    toggleBtn.style.cssText=`left:${cx}px;top:${SM_L1_Y+SM_L1_PH+6}px`;
+    toggleBtn.innerHTML=`
+      <div class="show-l2-rings">
+        <div class="ping-ring"></div><div class="ping-ring"></div><div class="ping-ring"></div>
+        <div class="show-l2-dot"></div>
+      </div>
+      <div class="show-l2-label">Show pages ↓</div>`;
     toggleBtn.onclick=(e)=>{e.stopPropagation();toggleSmL2(sec.id);};
     smCanvas.appendChild(toggleBtn);
     // SVG group for L2 connectors (hidden by default)
@@ -863,8 +859,12 @@ function toggleSmL2(secId){
   });
   const g=smSvg.querySelector(`.sm-l2g[data-smsec="${secId}"]`);
   if(g)g.style.display=nowOpen?'':'none';
-  const btn=smCanvas.querySelector(`.sm-l2-toggle[data-smsec="${secId}"]`);
-  if(btn)btn.textContent=nowOpen?'− Hide pages':'+ Show pages';
+  const btn=smCanvas.querySelector(`.show-l2-btn[data-smsec="${secId}"]`);
+  if(btn){
+    btn.classList.toggle('open',nowOpen);
+    const lbl=btn.querySelector('.show-l2-label');
+    if(lbl) lbl.textContent=nowOpen?'− Hide pages':'Show pages ↓';
+  }
   // Re-focus to show expanded content if open
   if(nowOpen){
     const idx=SECTIONS.findIndex(s=>s.id===secId);
@@ -1231,8 +1231,8 @@ function updateBar(stop,l2){
     document.getElementById('tour-name').textContent=stop.name;
     document.getElementById('tour-desc').textContent=stop.desc||'';
     const data=stop.data;
-    if(data&&data.l2.length&&l2Opened.has(data.id)){
-      // only show L2 chips once the user has clicked "Show Level 2 info"
+    // Don't show L2 chips in sitemap mode — L2 is explored via "Show pages" toggle
+    if(!isSMMode&&data&&data.l2.length&&l2Opened.has(data.id)){
       const chips=data.l2.map((l2item,i)=>`<span class="chip" onclick="gotoL2(${mainStops.indexOf(stop)},${i})">${l2item.name}</span>`).join('');
       document.getElementById('tour-chips').innerHTML=chips;
     } else {
@@ -1285,15 +1285,14 @@ function updateSmNavBtns(){
 }
 function startTour(){
   document.getElementById('overview-hint').classList.add('hidden');
-  tourActive=true;
-  currentStop=1;applyStop(1);
+  if(!isSMMode) setMode('sitemap');
+  focusSection('home');
 }
-function stopTour(){
-  tourActive=false;
-}
+function stopTour(){tourActive=false;}
 function toggleTour(){tourActive?stopTour():startTour();}
 function closeHint(){
   document.getElementById('overview-hint').classList.add('hidden');
+  if(!isSMMode) setMode('sitemap');
   focusSection('home');
 }
 
@@ -1389,6 +1388,9 @@ function setMode(m){
     smTx=vpw/2-1560*smSc;smTy=vph/2-280*smSc;
     applyTransformSM();
     smSecIdx=0;updateSmNavBtns();syncIslandNav(null);
+    // Reset bottom bar to L1 context (clear any stale L2 breadcrumb from IA mode)
+    document.getElementById('bc-l1').classList.remove('visible');
+    document.getElementById('tour-chips').innerHTML='';
     // Navigate to where user was in IA
     if(fromSecId){
       const idx=SECTIONS.findIndex(s=>s.id===fromSecId);
@@ -1411,7 +1413,7 @@ function setMode(m){
 // PAN + ZOOM EVENTS
 // ═══════════════════════════════════════════
 container.addEventListener('mousedown',e=>{
-  if(e.button!==0||e.target.closest('.pill,.chip,.sm-l2-toggle'))return;
+  if(e.button!==0||e.target.closest('.pill,.chip,.show-l2-btn'))return;
   isPanning=true;panSX=e.clientX;panSY=e.clientY;
   panTX=isSMMode?smTx:tx;panTY=isSMMode?smTy:ty;
   container.classList.add('panning');
