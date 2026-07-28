@@ -581,6 +581,14 @@ const smCanvas=document.getElementById('sm-canvas');
 const smSvg=document.getElementById('sm-svg');
 let smTx=0,smTy=0,smSc=0.3;
 let smBuilt=false,isSMMode=false;
+// Section X positions used in sitemap — must match buildSitemapCanvas
+const SM_SEC_CXS=[200,540,880,1220,1560,1900,2240,2580,2920];
+const SM_L1_Y_REF=148; // L1 pill top in sitemap
+function smFlyTo(cx,cy,targetSc){
+  const vpw=container.clientWidth||1280,vph=container.clientHeight||600;
+  smTx=vpw/2-cx*targetSc;smTy=vph/2-cy*targetSc;smSc=targetSc;
+  applyTransformSM();
+}
 function applyTransformSM(){
   smCanvas.style.transform=`translate(${smTx}px,${smTy}px) scale(${smSc})`;
   document.getElementById('zoom-label').textContent=Math.round(smSc*100)+'%';
@@ -794,7 +802,16 @@ function zoom(factor){
   zoomTarget.sc=newSc;
   if(!zoomRaf)zoomRaf=requestAnimationFrame(smoothZoomStep);
 }
-function resetView(){hideAllL2();hideAllCtas();syncIslandNav(null);flyTo(START_CX,700,0.065,true)}
+function resetView(){
+  if(isSMMode){
+    syncIslandNav(null);
+    const vpw=container.clientWidth||1280,vph=container.clientHeight||600;
+    smSc=Math.min(vpw/3100,vph/780)*0.86;
+    smTx=vpw/2-1560*smSc;smTy=vph/2-380*smSc;
+    applyTransformSM();return;
+  }
+  hideAllL2();hideAllCtas();syncIslandNav(null);flyTo(START_CX,700,0.065,true);
+}
 
 // Section zoom scales
 function sectionScale(sec){
@@ -1052,6 +1069,20 @@ function syncIslandNav(secId){
   });
 }
 function focusSection(secId){
+  if(isSMMode){
+    const idx=SECTIONS.findIndex(s=>s.id===secId);
+    if(idx<0)return;
+    const cx=SM_SEC_CXS[idx];
+    const sec=SECTIONS[idx];
+    // zoom to fit L1 pill + all L2 rows in view
+    const contentH=sec.l2.length>0?(220+sec.l2.length*50+60):(SM_L1_Y_REF+80);
+    const vpw=container.clientWidth||1280,vph=container.clientHeight||600;
+    const targetSc=Math.min(vpw*0.55/300, vph*0.75/contentH, 2.2);
+    const focusCy=sec.l2.length>0?(SM_L1_Y_REF+(220+sec.l2.length*50)/2):SM_L1_Y_REF+13;
+    syncIslandNav(secId);
+    smFlyTo(cx,focusCy,targetSc);
+    return;
+  }
   const idx=mainStops.findIndex(s=>s.id===secId);
   if(idx>-1){currentStop=idx;applyStop(idx);}
 }
