@@ -416,19 +416,20 @@ body.sitemap .card{opacity:0;pointer-events:none}
 
 /* ── BACK TO SITEMAP BUTTON ── */
 #back-to-sm{
-  position:fixed;bottom:108px;left:50%;transform:translateX(-50%);
-  font-size:11px;font-weight:700;color:#6B3FD4;letter-spacing:.01em;
+  position:fixed;bottom:124px;left:50%;transform:translateX(-50%);
+  font-size:13px;font-weight:800;color:#6B3FD4;letter-spacing:.01em;
   cursor:pointer;z-index:201;
-  background:rgba(255,255,255,.95);padding:5px 16px;border-radius:20px;
-  border:1.5px solid rgba(107,63,212,.35);
+  background:rgba(255,255,255,.97);padding:10px 28px;border-radius:999px;
+  border:2px solid rgba(107,63,212,.4);
   font-family:'Lato',sans-serif;
   display:none;opacity:0;
-  transition:opacity .3s,background .15s;
+  transition:opacity .3s,background .15s,transform .15s;
   white-space:nowrap;
-  box-shadow:0 2px 12px rgba(107,63,212,.15),0 1px 4px rgba(0,0,0,.06);
+  box-shadow:0 4px 20px rgba(107,63,212,.18),0 1px 6px rgba(0,0,0,.06);
 }
 #back-to-sm.visible{opacity:1;}
-#back-to-sm:hover{background:rgba(107,63,212,.07);}
+#back-to-sm:hover{background:rgba(107,63,212,.07);transform:translateX(-50%) scale(1.03);}
+#back-to-sm:active{transform:translateX(-50%) scale(0.97);}
 
 /* ── SHOW L2 CTA ── */
 .show-l2-btn{
@@ -753,14 +754,30 @@ const smCanvas=document.getElementById('sm-canvas');
 const smSvg=document.getElementById('sm-svg');
 let smTx=0,smTy=0,smSc=0.3;
 let smBuilt=false,isSMMode=false,smSecIdx=0;
-const smL2Open=new Set(); // tracks which L1 sections have L2 expanded in sitemap
+const smL2Open=new Set();
+let smZoomTarget={tx:0,ty:0,sc:0.3};
+let smZoomRaf=null;
+function smoothSmStep(){
+  const ease=0.18;
+  const dsc=smZoomTarget.sc-smSc,dtx=smZoomTarget.tx-smTx,dty=smZoomTarget.ty-smTy;
+  if(Math.abs(dsc)<0.0005&&Math.abs(dtx)<0.3&&Math.abs(dty)<0.3){
+    smSc=smZoomTarget.sc;smTx=smZoomTarget.tx;smTy=smZoomTarget.ty;
+    applyTransformSM();smZoomRaf=null;return;
+  }
+  smSc+=dsc*ease;smTx+=dtx*ease;smTy+=dty*ease;
+  applyTransformSM();
+  smZoomRaf=requestAnimationFrame(smoothSmStep);
+}
 // Section X positions used in sitemap — must match buildSitemapCanvas
 const SM_SEC_CXS=[200,540,880,1220,1560,1900,2240,2580,2920];
 const SM_L1_Y_REF=148; // L1 pill top in sitemap
 function smFlyTo(cx,cy,targetSc){
   const vpw=container.clientWidth||1280,vph=container.clientHeight||600;
-  smTx=vpw/2-cx*targetSc;smTy=vph/2-cy*targetSc;smSc=targetSc;
-  applyTransformSM();
+  smZoomTarget.tx=vpw/2-cx*targetSc;
+  smZoomTarget.ty=vph/2-cy*targetSc;
+  smZoomTarget.sc=targetSc;
+  if(smZoomRaf){cancelAnimationFrame(smZoomRaf);smZoomRaf=null;}
+  smZoomRaf=requestAnimationFrame(smoothSmStep);
 }
 function applyTransformSM(){
   smCanvas.style.transform=`translate(${smTx}px,${smTy}px) scale(${smSc})`;
@@ -1394,10 +1411,11 @@ function setMode(m){
 // PAN + ZOOM EVENTS
 // ═══════════════════════════════════════════
 container.addEventListener('mousedown',e=>{
-  if(e.button!==0||e.target.closest('.pill,.chip'))return;
+  if(e.button!==0||e.target.closest('.pill,.chip,.sm-l2-toggle'))return;
   isPanning=true;panSX=e.clientX;panSY=e.clientY;
   panTX=isSMMode?smTx:tx;panTY=isSMMode?smTy:ty;
   container.classList.add('panning');
+  if(isSMMode&&smZoomRaf){cancelAnimationFrame(smZoomRaf);smZoomRaf=null;}
   (isSMMode?smCanvas:canvas).style.transition='none';
 });
 document.addEventListener('mousemove',e=>{
