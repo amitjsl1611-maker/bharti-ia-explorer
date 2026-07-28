@@ -523,6 +523,34 @@ body.sitemap .card{opacity:0;pointer-events:none}
 #cm-skip:hover{color:#888;}
 /* step pill hidden */
 #cm-step-pill{display:none;}
+
+/* Coach mark illustration */
+#cm-illus{position:relative;height:116px;border-radius:12px;overflow:hidden;background:#f4f4f6;border:1px solid #e8e8ea;}
+.cm-slide{
+  position:absolute;inset:0;display:flex;align-items:center;justify-content:center;gap:10px;padding:12px 14px;
+  opacity:0;animation:cm-slide-cycle 9s infinite ease-in-out;
+}
+.cm-slide:nth-child(1){animation-delay:0s;}
+.cm-slide:nth-child(2){animation-delay:3s;}
+.cm-slide:nth-child(3){animation-delay:6s;}
+@keyframes cm-slide-cycle{
+  0%{opacity:0;transform:translateY(6px)}
+  6%{opacity:1;transform:translateY(0)}
+  27%{opacity:1;transform:translateY(0)}
+  33%{opacity:0;transform:translateY(-6px)}
+  100%{opacity:0;transform:translateY(6px)}
+}
+.cm-il-card{
+  background:#fff;border-radius:10px;padding:9px 12px;flex-shrink:0;
+  box-shadow:0 2px 8px rgba(0,0,0,.07);
+}
+.cm-il-arrow{font-size:16px;color:#c0c0c0;flex-shrink:0;}
+.cm-il-tag{font-size:8px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;margin-bottom:5px;}
+.cm-il-pill{
+  display:inline-block;font-size:7.5px;font-weight:700;
+  border-radius:5px;padding:3px 8px;margin:2px 2px 0 0;
+}
+.cm-il-bar{height:3.5px;border-radius:2px;margin-top:5px;}
 /* title + body */
 #cm-title{font-size:19px;font-weight:900;color:#111;letter-spacing:-.02em;line-height:1.22;margin-bottom:10px;}
 #cm-body{font-size:12.5px;color:#666;line-height:1.72;margin-bottom:22px;white-space:pre-line;}
@@ -1759,22 +1787,49 @@ function _cmFadeContent(step){
     if(s.illus){
       el.illus.style.display='block';
       el.illus.innerHTML=`
-        <div style="display:flex;align-items:center;gap:12px;font-family:'Lato',sans-serif;">
-          <div style="flex:1;background:#fff;border:1.5px solid #3D6B35;border-radius:10px;padding:10px 14px;">
-            <div style="font-size:10px;font-weight:800;color:#3D6B35;margin-bottom:6px;">WHO WE ARE</div>
-            <div style="display:flex;gap:6px;flex-wrap:wrap;">
-              <div style="background:#F0F8FF;border:1px solid #b3d4ed;border-radius:6px;padding:4px 8px;font-size:9px;font-weight:700;color:#1A3A5C;">About Us</div>
-              <div style="background:#F0F8FF;border:1px solid #b3d4ed;border-radius:6px;padding:4px 8px;font-size:9px;font-weight:700;color:#1A3A5C;outline:2px solid #555;outline-offset:1px;">Leadership ↗</div>
-            </div>
-            <div style="font-size:8.5px;color:#aaa;margin-top:5px;">click any card →</div>
+        <div class="cm-slide" style="font-family:'Lato',sans-serif;">
+          <div class="cm-il-card" style="border:1.5px solid #3D6B35;width:148px;">
+            <div class="cm-il-tag" style="color:#3D6B35;">Sitemap · Who We Are</div>
+            <span class="cm-il-pill" style="background:#EBF5E8;border:1px solid #3D6B35;color:#3D6B35;">About Us</span>
+            <span class="cm-il-pill" style="background:#EBF5E8;border:1px solid #3D6B35;color:#3D6B35;">Leadership</span>
+            <span class="cm-il-pill" style="background:#EBF5E8;border:1px solid #3D6B35;color:#3D6B35;">Our Story</span>
+            <div style="margin-top:8px;display:inline-flex;align-items:center;gap:4px;border:1.5px solid #3D6B35;border-radius:20px;padding:3px 10px;font-size:7.5px;font-weight:800;color:#3D6B35;">+ Show pages</div>
           </div>
-          <div style="font-size:18px;color:#bbb;">→</div>
-          <div style="flex:1;background:#F5F5F5;border:1.5px solid #111;border-radius:10px;padding:10px 14px;">
-            <div style="font-size:9px;font-weight:800;color:#111;margin-bottom:4px;">IA VIEW</div>
-            <div style="font-size:9px;font-weight:700;color:#333;">Leadership</div>
-            <div style="height:4px;background:#111;border-radius:2px;margin-top:6px;width:70%;opacity:.25;"></div>
-            <div style="height:4px;background:#111;border-radius:2px;margin-top:4px;width:50%;opacity:.15;"></div>
-            <div style="font-size:8px;color:#aaa;margin-top:5px;">full detail zoomed in</div>
+          <div class="cm-il-arrow">→</div>
+          <div style="font-size:8px;color:#888;font-family:'Lato',sans-serif;font-weight:600;text-align:center;line-height:1.5;">click any<br>L2 card</div>
+        </div>
+
+        <div class="cm-slide" style="font-family:'Lato',sans-serif;">
+          <div class="cm-il-card" style="border:1.5px solid #3D6B35;width:130px;opacity:.45;">
+            <div class="cm-il-tag" style="color:#3D6B35;">Sitemap · Who We Are</div>
+            <span class="cm-il-pill" style="background:#EBF5E8;border:1px solid #3D6B35;color:#3D6B35;">About Us</span>
+            <span class="cm-il-pill" style="background:#EBF5E8;border:1.5px solid #2f97da;color:#1A3A5C;box-shadow:0 0 0 2px rgba(47,151,218,.35);">Leadership ↗</span>
+          </div>
+          <div class="cm-il-arrow">→</div>
+          <div style="position:relative">
+            <div style="background:#111;color:#fff;font-size:7.5px;font-weight:700;font-family:'Lato',sans-serif;padding:3px 10px;border-radius:10px;position:absolute;top:-24px;left:50%;transform:translateX(-50%);white-space:nowrap;">Switched to IA view</div>
+            <div class="cm-il-card" style="border:1.5px solid #2f97da;width:130px;background:radial-gradient(circle,#d8d8d8 1px,transparent 1px) #fafafa;background-size:16px 16px;">
+              <div class="cm-il-tag" style="color:#2f97da;">IA View · Leadership</div>
+              <div class="cm-il-bar" style="background:#2f97da;width:80%;opacity:.5;"></div>
+              <div class="cm-il-bar" style="background:#2f97da;width:55%;opacity:.3;margin-top:4px;"></div>
+              <div class="cm-il-bar" style="background:#2f97da;width:65%;opacity:.2;margin-top:4px;"></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="cm-slide" style="font-family:'Lato',sans-serif;">
+          <div class="cm-il-card" style="border:1.5px solid #2f97da;width:148px;background:radial-gradient(circle,#d8d8d8 1px,transparent 1px) #fafafa;background-size:16px 16px;">
+            <div class="cm-il-tag" style="color:#2f97da;">IA View · Leadership</div>
+            <div class="cm-il-bar" style="background:#2f97da;width:90%;opacity:.5;"></div>
+            <div class="cm-il-bar" style="background:#2f97da;width:65%;opacity:.3;margin-top:4px;"></div>
+            <div class="cm-il-bar" style="background:#2f97da;width:75%;opacity:.2;margin-top:4px;"></div>
+            <div style="margin-top:8px;display:inline-flex;align-items:center;gap:4px;border:1.5px solid rgba(107,63,212,.5);border-radius:20px;padding:3px 10px;font-size:7.5px;font-weight:800;color:#6B3FD4;background:rgba(255,255,255,.9);">← Back to Sitemap</div>
+          </div>
+          <div class="cm-il-arrow">→</div>
+          <div class="cm-il-card" style="border:1.5px solid #3D6B35;width:130px;opacity:.45;">
+            <div class="cm-il-tag" style="color:#3D6B35;">Sitemap · Who We Are</div>
+            <span class="cm-il-pill" style="background:#EBF5E8;border:1px solid #3D6B35;color:#3D6B35;">About Us</span>
+            <span class="cm-il-pill" style="background:#EBF5E8;border:1px solid #3D6B35;color:#3D6B35;">Leadership</span>
           </div>
         </div>`;
     } else {
