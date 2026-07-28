@@ -978,7 +978,6 @@ function updateBar(stop,l2){
     }
   }
   const n=mainStops.length-1;
-  document.getElementById('tour-counter').textContent=currentStop===0?'Overview':`${currentStop} / ${n}`;
 }
 function gotoL2(stopIdx,l2idx){
   currentStop=stopIdx;applyStop(stopIdx,l2idx);
@@ -1205,7 +1204,6 @@ lucide.createIcons();
 // Default bar state
 document.getElementById('tour-name').textContent='Bharti.com — Information Architecture';
 document.getElementById('tour-desc').textContent='9 primary sections · 38 page templates · 65–80 total URLs';
-document.getElementById('tour-counter').textContent='—';
 updateNavButtons();
 </script>
 </body>
