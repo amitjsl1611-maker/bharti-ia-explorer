@@ -1324,11 +1324,12 @@ function focusSection(secId){
     if(idx<0)return;
     const cx=SM_SEC_CXS[idx];
     const sec=SECTIONS[idx];
-    // zoom to fit L1 pill + all L2 rows in view
-    const contentH=sec.l2.length>0?(220+sec.l2.length*50+60):(SM_L1_Y_REF+80);
     const vpw=container.clientWidth||1280,vph=container.clientHeight||600;
-    const targetSc=Math.min(vpw*0.55/300, vph*0.75/contentH, 2.2);
-    const focusCy=sec.l2.length>0?(SM_L1_Y_REF+(220+sec.l2.length*50)/2):SM_L1_Y_REF+13;
+    // Only account for L2 height when that section is actually expanded
+    const l2Vis=smL2Open.has(sec.id)&&sec.l2.length>0;
+    const contentH=l2Vis?(220+sec.l2.length*50+60):(SM_L1_Y_REF+56);
+    const targetSc=Math.min(vpw*0.62/220, vph*0.72/contentH, 1.9);
+    const focusCy=l2Vis?(SM_L1_Y_REF+(220+sec.l2.length*50)/2):SM_L1_Y_REF+13;
     smSecIdx=idx;
     syncIslandNav(secId);
     smFlyTo(cx,focusCy,targetSc);
@@ -1364,6 +1365,7 @@ function setMode(m){
   if(isSMMode){
     hideBackToSm();
     clearHighlight(); // prevent .dimmed bleeding onto sm-canvas pills
+    document.getElementById('overview-hint').classList.add('hidden');
     if(!smBuilt){buildSitemapCanvas();smBuilt=true;}
     const vpw=container.clientWidth||1280,vph=container.clientHeight||600;
     smSc=Math.min(vpw/1800,vph/560)*0.92;
@@ -1460,10 +1462,9 @@ document.addEventListener('keydown',e=>{
 buildCanvas();
 buildIslandNav();
 
-// Default mode: sitemap, focused on Home
-// isSMMode starts false; setMode('sitemap') will switch and build sm-canvas
+// Default mode: sitemap, full overview (no section pre-focused)
 setMode('sitemap');
-focusSection('home');
+syncIslandNav('home'); // highlight Home tab without flying into it
 
 // ═══════════════════════════════════════════
 // PASSWORD GATE
