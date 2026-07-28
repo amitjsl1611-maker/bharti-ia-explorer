@@ -49,8 +49,15 @@ html,body{width:100%;height:100%;overflow:hidden;font-family:'Lato',sans-serif;f
   font-size:15px;letter-spacing:-.01em;color:#111;
 }
 .nb-square{
-  width:18px;height:18px;background:#FFD105;
-  border:2px solid #111;flex-shrink:0;
+  width:18px;height:18px;background:#111;
+  flex-shrink:0;
+}
+/* ── CONFIDENTIALITY NOTICE ── */
+#conf-notice{
+  position:fixed;bottom:20px;right:76px;
+  font-family:'Lato',sans-serif;font-size:9.5px;
+  color:rgba(0,0,0,.35);line-height:1.6;text-align:right;
+  z-index:200;pointer-events:none;
 }
 .nb-tm{font-size:9px;vertical-align:super;font-weight:700;margin-left:1px}
 
@@ -367,6 +374,12 @@ body.sitemap .card{opacity:0;pointer-events:none}
       NETBRAMHA<span class="nb-tm">TM</span>
     </div>
   </div>
+</div>
+
+<!-- CONFIDENTIALITY NOTICE -->
+<div id="conf-notice">
+  All rights reserved. This is a private &amp; confidential document.<br>
+  Sharing or reproducing this without consent is prohibited.
 </div>
 
 <!-- ZOOM ISLAND -->
