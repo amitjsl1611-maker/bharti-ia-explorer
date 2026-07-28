@@ -521,13 +521,8 @@ body.sitemap .card{opacity:0;pointer-events:none}
   letter-spacing:.03em;text-transform:uppercase;transition:color .15s;
 }
 #cm-skip:hover{color:#888;}
-/* step pill */
-#cm-step-pill{
-  display:inline-flex;align-items:center;gap:5px;
-  background:#F3F0FF;color:#6B3FD4;border-radius:20px;
-  padding:3px 10px;font-size:9.5px;font-weight:800;
-  letter-spacing:.08em;text-transform:uppercase;margin-bottom:10px;
-}
+/* step pill hidden */
+#cm-step-pill{display:none;}
 /* title + body */
 #cm-title{font-size:19px;font-weight:900;color:#111;letter-spacing:-.02em;line-height:1.22;margin-bottom:10px;}
 #cm-body{font-size:12.5px;color:#666;line-height:1.72;margin-bottom:22px;white-space:pre-line;}
@@ -536,7 +531,7 @@ body.sitemap .card{opacity:0;pointer-events:none}
 #cm-illus svg{display:block;}
 /* progress bar */
 #cm-prog-wrap{height:2.5px;background:#eee;border-radius:2px;margin-bottom:22px;}
-#cm-prog-fill{height:2.5px;background:#6B3FD4;border-radius:2px;transition:width .4s cubic-bezier(.4,0,.2,1);}
+#cm-prog-fill{height:2.5px;background:#111;border-radius:2px;transition:width .4s cubic-bezier(.4,0,.2,1);}
 /* footer */
 #cm-foot{display:flex;align-items:center;justify-content:space-between;}
 #cm-back{
@@ -716,10 +711,12 @@ body.sitemap .card{opacity:0;pointer-events:none}
       <div id="cm-dots"></div>
       <button id="cm-skip" onclick="cmSkip()">Skip</button>
     </div>
-    <div id="cm-step-pill"><span id="cm-step-label"></span></div>
-    <h3 id="cm-title"></h3>
-    <div id="cm-illus"></div>
-    <p id="cm-body"></p>
+    <div id="cm-content">
+      <div id="cm-step-pill"><span id="cm-step-label"></span></div>
+      <h3 id="cm-title"></h3>
+      <div id="cm-illus"></div>
+      <p id="cm-body"></p>
+    </div>
     <div id="cm-prog-wrap"><div id="cm-prog-fill"></div></div>
     <div id="cm-foot">
       <button id="cm-back" onclick="cmBack()">← Back</button>
@@ -1624,6 +1621,7 @@ const CM_STEPS=[
   },
   {
     sel:'.tb-center',
+    radius:999,
     title:'Two views, one document',
     body:'The document is split into two interactive modes:\n\n• Sitemap — a high-level tree of all sections and pages\n• IA View — detailed per-page structure with descriptions, content types, and user actions\n\nUse this tab to switch between them anytime.',
     pos:'below',
@@ -1654,14 +1652,17 @@ const CM_STEPS=[
 ];
 
 let _cmStep=0;
+let _cmTimer=null;
+const CM_AUTO_MS=5000; // auto-advance interval
+
 const _cmEl=()=>({
   wrap:document.getElementById('coachmark'),
   dimmer:document.getElementById('cm-dimmer'),
   spot:document.getElementById('cm-spot'),
   caret:document.getElementById('cm-caret'),
   modal:document.getElementById('cm-modal'),
+  content:document.getElementById('cm-content'),
   dots:document.getElementById('cm-dots'),
-  stepLabel:document.getElementById('cm-step-label'),
   title:document.getElementById('cm-title'),
   illus:document.getElementById('cm-illus'),
   body:document.getElementById('cm-body'),
@@ -1670,74 +1671,39 @@ const _cmEl=()=>({
   next:document.getElementById('cm-next'),
 });
 
+function _cmSchedule(){
+  clearTimeout(_cmTimer);
+  if(_cmStep<CM_STEPS.length-1){
+    _cmTimer=setTimeout(()=>cmNext(),CM_AUTO_MS);
+  }
+}
+
 function cmStart(){
   const el=_cmEl();
-  // Build dots
   el.dots.innerHTML=CM_STEPS.map((_,i)=>`<div class="cm-dot" id="cmd${i}"></div>`).join('');
   el.wrap.style.display='block';
   requestAnimationFrame(()=>{
     el.wrap.classList.add('cm-show');
-    cmRender(0);
+    _cmApplyPosition(0); // set position instantly before fade-in
+    _cmFadeContent(0);
   });
 }
 
-function cmRender(step){
-  _cmStep=step;
+function _cmApplyPosition(step){
   const s=CM_STEPS[step];
   const el=_cmEl();
-  const N=CM_STEPS.length;
-
-  // Dots
-  document.querySelectorAll('.cm-dot').forEach((d,i)=>d.classList.toggle('active',i===step));
-  // Meta
-  el.stepLabel.textContent=`Step ${step+1} of ${N}`;
-  el.title.textContent=s.title;
-  el.body.textContent=s.body;
-  el.prog.style.width=((step+1)/N*100)+'%';
-  el.back.style.visibility=step===0?'hidden':'visible';
-  el.next.textContent=s.isLast?'Got it ✓':'Next →';
-
-  // Illustration for last step
-  if(s.illus){
-    el.illus.style.display='block';
-    el.illus.innerHTML=`
-      <div style="display:flex;align-items:center;gap:12px;font-family:'Lato',sans-serif;">
-        <div style="flex:1;background:#fff;border:1.5px solid #3D6B35;border-radius:10px;padding:10px 14px;">
-          <div style="font-size:10px;font-weight:800;color:#3D6B35;margin-bottom:6px;">WHO WE ARE</div>
-          <div style="display:flex;gap:6px;flex-wrap:wrap;">
-            <div style="background:#F0F8FF;border:1px solid #b3d4ed;border-radius:6px;padding:4px 8px;font-size:9px;font-weight:700;color:#1A3A5C;">About Us</div>
-            <div style="background:#F0F8FF;border:1px solid #b3d4ed;border-radius:6px;padding:4px 8px;font-size:9px;font-weight:700;color:#1A3A5C;outline:2px solid #6B3FD4;outline-offset:1px;">Leadership ↗</div>
-          </div>
-          <div style="font-size:8.5px;color:#aaa;margin-top:5px;">click any card →</div>
-        </div>
-        <div style="font-size:18px;color:#bbb;">→</div>
-        <div style="flex:1;background:#F5F0FF;border:1.5px solid #6B3FD4;border-radius:10px;padding:10px 14px;">
-          <div style="font-size:9px;font-weight:800;color:#6B3FD4;margin-bottom:4px;">IA VIEW</div>
-          <div style="font-size:9px;font-weight:700;color:#333;">Leadership</div>
-          <div style="height:4px;background:#6B3FD4;border-radius:2px;margin-top:6px;width:70%;opacity:.3;"></div>
-          <div style="height:4px;background:#6B3FD4;border-radius:2px;margin-top:4px;width:50%;opacity:.2;"></div>
-          <div style="font-size:8px;color:#aaa;margin-top:5px;">full detail zoomed in</div>
-        </div>
-      </div>`;
-  } else {
-    el.illus.style.display='none';
-    el.illus.innerHTML='';
-  }
-
   if(s.sel){
-    // Spotlight mode
     const target=document.querySelector(s.sel);
     if(target){
       const pad=s.pad||10;
       const r=target.getBoundingClientRect();
       el.dimmer.classList.remove('on');
-      // position + show spot
       el.spot.style.left=(r.left-pad)+'px';
       el.spot.style.top=(r.top-pad)+'px';
       el.spot.style.width=(r.width+pad*2)+'px';
       el.spot.style.height=(r.height+pad*2)+'px';
+      el.spot.style.borderRadius=(s.radius!=null?s.radius+'px':'14px');
       el.spot.classList.add('lit');
-      // position modal
       const mw=420,gap=18;
       const vpw=window.innerWidth,vph=window.innerHeight;
       const modalLeft=Math.max(16,Math.min(vpw-mw-16,r.left+r.width/2-mw/2));
@@ -1747,7 +1713,6 @@ function cmRender(step){
         el.modal.style.bottom='auto';
         el.modal.style.left=modalLeft+'px';
         el.modal.style.transform='none';
-        // caret above modal pointing up
         el.caret.className='up show';
         el.caret.style.top=(top-13)+'px';
         el.caret.style.left=(modalLeft+mw/2-11)+'px';
@@ -1757,7 +1722,6 @@ function cmRender(step){
         el.modal.style.top='auto';
         el.modal.style.left=modalLeft+'px';
         el.modal.style.transform='none';
-        // caret below modal pointing down
         el.caret.className='down show';
         const mh=el.modal.offsetHeight||220;
         el.caret.style.top=(vph-bottom+mh)+'px';
@@ -1765,7 +1729,6 @@ function cmRender(step){
       }
     }
   } else {
-    // Centered mode
     el.spot.classList.remove('lit');
     el.dimmer.classList.add('on');
     el.modal.style.top='50%';
@@ -1776,14 +1739,72 @@ function cmRender(step){
   }
 }
 
+function _cmFadeContent(step){
+  const s=CM_STEPS[step];
+  const el=_cmEl();
+  const N=CM_STEPS.length;
+  // update dots + progress immediately (outside fade)
+  document.querySelectorAll('.cm-dot').forEach((d,i)=>d.classList.toggle('active',i===step));
+  el.prog.style.width=((step+1)/N*100)+'%';
+
+  // fade content out
+  el.content.style.transition='opacity .18s ease';
+  el.content.style.opacity='0';
+  setTimeout(()=>{
+    // update content while invisible
+    el.title.textContent=s.title;
+    el.body.textContent=s.body;
+    el.back.style.visibility=step===0?'hidden':'visible';
+    el.next.textContent=s.isLast?'Got it ✓':'Next →';
+    if(s.illus){
+      el.illus.style.display='block';
+      el.illus.innerHTML=`
+        <div style="display:flex;align-items:center;gap:12px;font-family:'Lato',sans-serif;">
+          <div style="flex:1;background:#fff;border:1.5px solid #3D6B35;border-radius:10px;padding:10px 14px;">
+            <div style="font-size:10px;font-weight:800;color:#3D6B35;margin-bottom:6px;">WHO WE ARE</div>
+            <div style="display:flex;gap:6px;flex-wrap:wrap;">
+              <div style="background:#F0F8FF;border:1px solid #b3d4ed;border-radius:6px;padding:4px 8px;font-size:9px;font-weight:700;color:#1A3A5C;">About Us</div>
+              <div style="background:#F0F8FF;border:1px solid #b3d4ed;border-radius:6px;padding:4px 8px;font-size:9px;font-weight:700;color:#1A3A5C;outline:2px solid #555;outline-offset:1px;">Leadership ↗</div>
+            </div>
+            <div style="font-size:8.5px;color:#aaa;margin-top:5px;">click any card →</div>
+          </div>
+          <div style="font-size:18px;color:#bbb;">→</div>
+          <div style="flex:1;background:#F5F5F5;border:1.5px solid #111;border-radius:10px;padding:10px 14px;">
+            <div style="font-size:9px;font-weight:800;color:#111;margin-bottom:4px;">IA VIEW</div>
+            <div style="font-size:9px;font-weight:700;color:#333;">Leadership</div>
+            <div style="height:4px;background:#111;border-radius:2px;margin-top:6px;width:70%;opacity:.25;"></div>
+            <div style="height:4px;background:#111;border-radius:2px;margin-top:4px;width:50%;opacity:.15;"></div>
+            <div style="font-size:8px;color:#aaa;margin-top:5px;">full detail zoomed in</div>
+          </div>
+        </div>`;
+    } else {
+      el.illus.style.display='none';
+      el.illus.innerHTML='';
+    }
+    // fade back in
+    el.content.style.transition='opacity .25s ease';
+    el.content.style.opacity='1';
+    _cmSchedule();
+  },180);
+}
+
+function cmRender(step){
+  _cmStep=step;
+  _cmApplyPosition(step);
+  _cmFadeContent(step);
+}
+
 function cmNext(){
+  clearTimeout(_cmTimer);
   if(_cmStep>=CM_STEPS.length-1){cmSkip();return;}
   cmRender(_cmStep+1);
 }
 function cmBack(){
+  clearTimeout(_cmTimer);
   if(_cmStep>0)cmRender(_cmStep-1);
 }
 function cmSkip(){
+  clearTimeout(_cmTimer);
   const el=_cmEl();
   el.wrap.classList.remove('cm-show');
   setTimeout(()=>{el.wrap.style.display='none';},350);
