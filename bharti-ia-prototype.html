@@ -1680,46 +1680,114 @@ const CM_STEPS=[
 ];
 
 let _cmStep=0;
-let _cmTimer=null;
-const CM_AUTO_MS=5000; // auto-advance interval
-
-const _cmEl=()=>({
-  wrap:document.getElementById('coachmark'),
-  dimmer:document.getElementById('cm-dimmer'),
-  spot:document.getElementById('cm-spot'),
-  caret:document.getElementById('cm-caret'),
-  modal:document.getElementById('cm-modal'),
-  content:document.getElementById('cm-content'),
-  dots:document.getElementById('cm-dots'),
-  title:document.getElementById('cm-title'),
-  illus:document.getElementById('cm-illus'),
-  body:document.getElementById('cm-body'),
-  prog:document.getElementById('cm-prog-fill'),
-  back:document.getElementById('cm-back'),
-  next:document.getElementById('cm-next'),
-});
-
-function _cmSchedule(){
-  clearTimeout(_cmTimer);
-  if(_cmStep<CM_STEPS.length-1){
-    _cmTimer=setTimeout(()=>cmNext(),CM_AUTO_MS);
-  }
+// Cache element refs after DOM ready
+let _CM=null;
+function _cmEl(){
+  if(!_CM) _CM={
+    wrap:document.getElementById('coachmark'),
+    dimmer:document.getElementById('cm-dimmer'),
+    spot:document.getElementById('cm-spot'),
+    caret:document.getElementById('cm-caret'),
+    modal:document.getElementById('cm-modal'),
+    content:document.getElementById('cm-content'),
+    dots:document.getElementById('cm-dots'),
+    title:document.getElementById('cm-title'),
+    illus:document.getElementById('cm-illus'),
+    body:document.getElementById('cm-body'),
+    prog:document.getElementById('cm-prog-fill'),
+    back:document.getElementById('cm-back'),
+    next:document.getElementById('cm-next'),
+  };
+  return _CM;
 }
+
+// Build illustration HTML once — never rebuild it on step changes
+const CM_ILLUS_HTML=`
+  <div class="cm-slide" style="font-family:'Lato',sans-serif;">
+    <div class="cm-il-card" style="border:1.5px solid #3D6B35;width:148px;">
+      <div class="cm-il-tag" style="color:#3D6B35;">Sitemap · Who We Are</div>
+      <span class="cm-il-pill" style="background:#EBF5E8;border:1px solid #3D6B35;color:#3D6B35;">About Us</span>
+      <span class="cm-il-pill" style="background:#EBF5E8;border:1px solid #3D6B35;color:#3D6B35;">Leadership</span>
+      <span class="cm-il-pill" style="background:#EBF5E8;border:1px solid #3D6B35;color:#3D6B35;">Our Story</span>
+      <div style="margin-top:8px;display:inline-flex;align-items:center;gap:4px;border:1.5px solid #3D6B35;border-radius:20px;padding:3px 10px;font-size:7.5px;font-weight:800;color:#3D6B35;">+ Show pages</div>
+    </div>
+    <div class="cm-il-arrow">→</div>
+    <div style="font-size:8px;color:#999;font-family:'Lato',sans-serif;font-weight:600;text-align:center;line-height:1.6;">click any<br>L2 card</div>
+  </div>
+  <div class="cm-slide" style="font-family:'Lato',sans-serif;">
+    <div class="cm-il-card" style="border:1.5px solid #3D6B35;width:128px;opacity:.4;">
+      <div class="cm-il-tag" style="color:#3D6B35;">Sitemap · Who We Are</div>
+      <span class="cm-il-pill" style="background:#EBF5E8;border:1px solid #3D6B35;color:#3D6B35;">About Us</span>
+      <span class="cm-il-pill" style="background:#EBF5E8;border:1.5px solid #2f97da;color:#1A3A5C;box-shadow:0 0 0 2px rgba(47,151,218,.3);">Leadership ↗</span>
+    </div>
+    <div class="cm-il-arrow">→</div>
+    <div style="position:relative;">
+      <div style="background:#111;color:#fff;font-size:7.5px;font-weight:700;font-family:'Lato',sans-serif;padding:3px 10px;border-radius:10px;position:absolute;top:-26px;left:50%;transform:translateX(-50%);white-space:nowrap;letter-spacing:.01em;">Switched to IA view</div>
+      <div class="cm-il-card" style="border:1.5px solid #2f97da;width:128px;background:radial-gradient(circle,#d8d8d8 1px,transparent 1px) #fafafa;background-size:14px 14px;">
+        <div class="cm-il-tag" style="color:#2f97da;">IA View · Leadership</div>
+        <div class="cm-il-bar" style="background:#2f97da;width:82%;opacity:.5;"></div>
+        <div class="cm-il-bar" style="background:#2f97da;width:56%;opacity:.3;margin-top:4px;"></div>
+        <div class="cm-il-bar" style="background:#2f97da;width:68%;opacity:.2;margin-top:4px;"></div>
+      </div>
+    </div>
+  </div>
+  <div class="cm-slide" style="font-family:'Lato',sans-serif;">
+    <div class="cm-il-card" style="border:1.5px solid #2f97da;width:148px;background:radial-gradient(circle,#d8d8d8 1px,transparent 1px) #fafafa;background-size:14px 14px;">
+      <div class="cm-il-tag" style="color:#2f97da;">IA View · Leadership</div>
+      <div class="cm-il-bar" style="background:#2f97da;width:90%;opacity:.5;"></div>
+      <div class="cm-il-bar" style="background:#2f97da;width:65%;opacity:.3;margin-top:4px;"></div>
+      <div class="cm-il-bar" style="background:#2f97da;width:75%;opacity:.2;margin-top:4px;"></div>
+      <div style="margin-top:9px;display:inline-flex;align-items:center;gap:4px;border:1.5px solid rgba(107,63,212,.45);border-radius:20px;padding:3px 10px;font-size:7.5px;font-weight:800;color:#6B3FD4;background:rgba(255,255,255,.92);">← Back to Sitemap</div>
+    </div>
+    <div class="cm-il-arrow">→</div>
+    <div class="cm-il-card" style="border:1.5px solid #3D6B35;width:128px;opacity:.4;">
+      <div class="cm-il-tag" style="color:#3D6B35;">Sitemap · Who We Are</div>
+      <span class="cm-il-pill" style="background:#EBF5E8;border:1px solid #3D6B35;color:#3D6B35;">About Us</span>
+      <span class="cm-il-pill" style="background:#EBF5E8;border:1px solid #3D6B35;color:#3D6B35;">Leadership</span>
+    </div>
+  </div>`;
 
 function cmStart(){
   const el=_cmEl();
   el.dots.innerHTML=CM_STEPS.map((_,i)=>`<div class="cm-dot" id="cmd${i}"></div>`).join('');
+  // Build illustration once
+  el.illus.innerHTML=CM_ILLUS_HTML;
+  el.illus.style.display='none';
+  // Set initial content before showing, so first frame has no transition
+  el.content.style.transition='none';
+  el.content.style.opacity='1';
+  _cmSetContent(0);
+  _cmSetPosition(0,true);
   el.wrap.style.display='block';
-  requestAnimationFrame(()=>{
-    el.wrap.classList.add('cm-show');
-    _cmApplyPosition(0); // set position instantly before fade-in
-    _cmFadeContent(0);
-  });
+  requestAnimationFrame(()=>el.wrap.classList.add('cm-show'));
 }
 
-function _cmApplyPosition(step){
+function _cmSetContent(step){
   const s=CM_STEPS[step];
   const el=_cmEl();
+  const N=CM_STEPS.length;
+  document.querySelectorAll('.cm-dot').forEach((d,i)=>d.classList.toggle('active',i===step));
+  el.prog.style.width=((step+1)/N*100)+'%';
+  el.title.textContent=s.title;
+  el.body.textContent=s.body;
+  el.back.style.visibility=step===0?'hidden':'visible';
+  el.next.textContent=s.isLast?'Got it ✓':'Next →';
+  el.illus.style.display=s.illus?'block':'none';
+}
+
+function _cmSetPosition(step,instant){
+  const s=CM_STEPS[step];
+  const el=_cmEl();
+  // suppress position transition on first load
+  if(instant){
+    el.modal.style.transition='none';
+    el.spot.style.transition='none';
+    el.caret.style.transition='none';
+  } else {
+    el.modal.style.transition='';
+    el.spot.style.transition='';
+    el.caret.style.transition='';
+  }
   if(s.sel){
     const target=document.querySelector(s.sel);
     if(target){
@@ -1737,19 +1805,15 @@ function _cmApplyPosition(step){
       const modalLeft=Math.max(16,Math.min(vpw-mw-16,r.left+r.width/2-mw/2));
       if(s.pos==='below'){
         const top=r.bottom+pad+gap;
-        el.modal.style.top=top+'px';
-        el.modal.style.bottom='auto';
-        el.modal.style.left=modalLeft+'px';
-        el.modal.style.transform='none';
+        el.modal.style.top=top+'px';el.modal.style.bottom='auto';
+        el.modal.style.left=modalLeft+'px';el.modal.style.transform='none';
         el.caret.className='up show';
         el.caret.style.top=(top-13)+'px';
         el.caret.style.left=(modalLeft+mw/2-11)+'px';
       } else {
         const bottom=vph-(r.top-pad-gap);
-        el.modal.style.bottom=bottom+'px';
-        el.modal.style.top='auto';
-        el.modal.style.left=modalLeft+'px';
-        el.modal.style.transform='none';
+        el.modal.style.bottom=bottom+'px';el.modal.style.top='auto';
+        el.modal.style.left=modalLeft+'px';el.modal.style.transform='none';
         el.caret.className='down show';
         const mh=el.modal.offsetHeight||220;
         el.caret.style.top=(vph-bottom+mh)+'px';
@@ -1759,107 +1823,36 @@ function _cmApplyPosition(step){
   } else {
     el.spot.classList.remove('lit');
     el.dimmer.classList.add('on');
-    el.modal.style.top='50%';
-    el.modal.style.left='50%';
-    el.modal.style.bottom='auto';
-    el.modal.style.transform='translate(-50%,-50%)';
+    el.modal.style.top='50%';el.modal.style.left='50%';
+    el.modal.style.bottom='auto';el.modal.style.transform='translate(-50%,-50%)';
     el.caret.className='';
   }
 }
 
-function _cmFadeContent(step){
-  const s=CM_STEPS[step];
-  const el=_cmEl();
-  const N=CM_STEPS.length;
-  // update dots + progress immediately (outside fade)
-  document.querySelectorAll('.cm-dot').forEach((d,i)=>d.classList.toggle('active',i===step));
-  el.prog.style.width=((step+1)/N*100)+'%';
-
-  // fade content out
-  el.content.style.transition='opacity .18s ease';
-  el.content.style.opacity='0';
-  setTimeout(()=>{
-    // update content while invisible
-    el.title.textContent=s.title;
-    el.body.textContent=s.body;
-    el.back.style.visibility=step===0?'hidden':'visible';
-    el.next.textContent=s.isLast?'Got it ✓':'Next →';
-    if(s.illus){
-      el.illus.style.display='block';
-      el.illus.innerHTML=`
-        <div class="cm-slide" style="font-family:'Lato',sans-serif;">
-          <div class="cm-il-card" style="border:1.5px solid #3D6B35;width:148px;">
-            <div class="cm-il-tag" style="color:#3D6B35;">Sitemap · Who We Are</div>
-            <span class="cm-il-pill" style="background:#EBF5E8;border:1px solid #3D6B35;color:#3D6B35;">About Us</span>
-            <span class="cm-il-pill" style="background:#EBF5E8;border:1px solid #3D6B35;color:#3D6B35;">Leadership</span>
-            <span class="cm-il-pill" style="background:#EBF5E8;border:1px solid #3D6B35;color:#3D6B35;">Our Story</span>
-            <div style="margin-top:8px;display:inline-flex;align-items:center;gap:4px;border:1.5px solid #3D6B35;border-radius:20px;padding:3px 10px;font-size:7.5px;font-weight:800;color:#3D6B35;">+ Show pages</div>
-          </div>
-          <div class="cm-il-arrow">→</div>
-          <div style="font-size:8px;color:#888;font-family:'Lato',sans-serif;font-weight:600;text-align:center;line-height:1.5;">click any<br>L2 card</div>
-        </div>
-
-        <div class="cm-slide" style="font-family:'Lato',sans-serif;">
-          <div class="cm-il-card" style="border:1.5px solid #3D6B35;width:130px;opacity:.45;">
-            <div class="cm-il-tag" style="color:#3D6B35;">Sitemap · Who We Are</div>
-            <span class="cm-il-pill" style="background:#EBF5E8;border:1px solid #3D6B35;color:#3D6B35;">About Us</span>
-            <span class="cm-il-pill" style="background:#EBF5E8;border:1.5px solid #2f97da;color:#1A3A5C;box-shadow:0 0 0 2px rgba(47,151,218,.35);">Leadership ↗</span>
-          </div>
-          <div class="cm-il-arrow">→</div>
-          <div style="position:relative">
-            <div style="background:#111;color:#fff;font-size:7.5px;font-weight:700;font-family:'Lato',sans-serif;padding:3px 10px;border-radius:10px;position:absolute;top:-24px;left:50%;transform:translateX(-50%);white-space:nowrap;">Switched to IA view</div>
-            <div class="cm-il-card" style="border:1.5px solid #2f97da;width:130px;background:radial-gradient(circle,#d8d8d8 1px,transparent 1px) #fafafa;background-size:16px 16px;">
-              <div class="cm-il-tag" style="color:#2f97da;">IA View · Leadership</div>
-              <div class="cm-il-bar" style="background:#2f97da;width:80%;opacity:.5;"></div>
-              <div class="cm-il-bar" style="background:#2f97da;width:55%;opacity:.3;margin-top:4px;"></div>
-              <div class="cm-il-bar" style="background:#2f97da;width:65%;opacity:.2;margin-top:4px;"></div>
-            </div>
-          </div>
-        </div>
-
-        <div class="cm-slide" style="font-family:'Lato',sans-serif;">
-          <div class="cm-il-card" style="border:1.5px solid #2f97da;width:148px;background:radial-gradient(circle,#d8d8d8 1px,transparent 1px) #fafafa;background-size:16px 16px;">
-            <div class="cm-il-tag" style="color:#2f97da;">IA View · Leadership</div>
-            <div class="cm-il-bar" style="background:#2f97da;width:90%;opacity:.5;"></div>
-            <div class="cm-il-bar" style="background:#2f97da;width:65%;opacity:.3;margin-top:4px;"></div>
-            <div class="cm-il-bar" style="background:#2f97da;width:75%;opacity:.2;margin-top:4px;"></div>
-            <div style="margin-top:8px;display:inline-flex;align-items:center;gap:4px;border:1.5px solid rgba(107,63,212,.5);border-radius:20px;padding:3px 10px;font-size:7.5px;font-weight:800;color:#6B3FD4;background:rgba(255,255,255,.9);">← Back to Sitemap</div>
-          </div>
-          <div class="cm-il-arrow">→</div>
-          <div class="cm-il-card" style="border:1.5px solid #3D6B35;width:130px;opacity:.45;">
-            <div class="cm-il-tag" style="color:#3D6B35;">Sitemap · Who We Are</div>
-            <span class="cm-il-pill" style="background:#EBF5E8;border:1px solid #3D6B35;color:#3D6B35;">About Us</span>
-            <span class="cm-il-pill" style="background:#EBF5E8;border:1px solid #3D6B35;color:#3D6B35;">Leadership</span>
-          </div>
-        </div>`;
-    } else {
-      el.illus.style.display='none';
-      el.illus.innerHTML='';
-    }
-    // fade back in
-    el.content.style.transition='opacity .25s ease';
-    el.content.style.opacity='1';
-    _cmSchedule();
-  },180);
-}
-
 function cmRender(step){
   _cmStep=step;
-  _cmApplyPosition(step);
-  _cmFadeContent(step);
+  const el=_cmEl();
+  // Fade content out
+  el.content.style.transition='opacity .13s ease';
+  el.content.style.opacity='0';
+  // Move modal/spotlight immediately (CSS transition handles smoothness)
+  _cmSetPosition(step,false);
+  // After short fade, swap content and fade back in
+  requestAnimationFrame(()=>requestAnimationFrame(()=>{
+    _cmSetContent(step);
+    el.content.style.transition='opacity .2s ease';
+    el.content.style.opacity='1';
+  }));
 }
 
 function cmNext(){
-  clearTimeout(_cmTimer);
   if(_cmStep>=CM_STEPS.length-1){cmSkip();return;}
   cmRender(_cmStep+1);
 }
 function cmBack(){
-  clearTimeout(_cmTimer);
   if(_cmStep>0)cmRender(_cmStep-1);
 }
 function cmSkip(){
-  clearTimeout(_cmTimer);
   const el=_cmEl();
   el.wrap.classList.remove('cm-show');
   setTimeout(()=>{el.wrap.style.display='none';},350);
