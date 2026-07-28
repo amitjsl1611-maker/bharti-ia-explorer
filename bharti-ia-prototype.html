@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <title>Bharti.com — IA Explorer</title>
 <link href="https://fonts.googleapis.com/css2?family=Lato:wght@300;400;700;900&display=swap" rel="stylesheet">
+<script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 html,body{width:100%;height:100%;overflow:hidden;background:#fff;font-family:'Lato',sans-serif;font-size:13px;color:#111}
@@ -44,7 +45,7 @@ html,body{width:100%;height:100%;overflow:hidden;background:#fff;font-family:'La
 
 /* ── CANVAS CONTAINER ── */
 #container{
-  position:fixed;top:64px;left:0;right:0;bottom:96px;
+  position:fixed;top:130px;left:0;right:0;bottom:0;
   overflow:hidden;cursor:grab;
   background-color:#fafafa;
   background-image:radial-gradient(circle,#d8d8d8 1px,transparent 1px);
@@ -97,84 +98,91 @@ body.sitemap .card{opacity:0;pointer-events:none}
 .band-a{background:#FFF8E8;color:#7A5500}
 .bullet{padding:3px 14px;font-size:9.5px;color:#333;line-height:1.5}
 
-/* ── TOUR BAR ── */
+/* ── TOUR BAR (FLOATING ISLAND) ── */
 #tourbar{
-  position:fixed;bottom:0;left:0;right:0;height:96px;
-  background:rgba(255,255,255,.88);backdrop-filter:blur(20px) saturate(180%);
-  border-top:1px solid rgba(0,0,0,.07);
-  display:flex;align-items:center;gap:0;z-index:200;
-  padding:0 0;
+  position:fixed;bottom:20px;left:50%;transform:translateX(-50%);
+  background:rgba(255,255,255,.94);backdrop-filter:blur(20px) saturate(180%);
+  border:1px solid rgba(0,0,0,.08);border-radius:16px;
+  box-shadow:0 8px 32px rgba(0,0,0,.12),0 2px 8px rgba(0,0,0,.05);
+  display:flex;align-items:stretch;gap:0;z-index:200;
+  overflow:hidden;
+  height:64px;
+  min-width:640px;max-width:min(960px,calc(100vw - 80px));
 }
-.tb-nav{
-  display:flex;align-items:center;justify-content:center;
-  width:72px;height:100%;cursor:pointer;border:none;background:transparent;
-  color:#111;font-size:22px;font-weight:300;
-  transition:background .15s;flex-shrink:0;
+.tb-nav-text{
+  display:flex;align-items:center;justify-content:center;gap:4px;
+  padding:0 20px;cursor:pointer;border:none;background:transparent;
+  font-family:'Lato',sans-serif;font-size:12px;font-weight:700;
+  color:#666;letter-spacing:.02em;
+  transition:background .15s,color .15s;flex-shrink:0;white-space:nowrap;
 }
-.tb-nav:hover{background:rgba(0,0,0,.04)}
-.tb-nav:disabled{color:#d0d0d0;cursor:default}
-.tb-nav:disabled:hover{background:transparent}
+.tb-nav-text:hover{background:rgba(0,0,0,.04);color:#111}
+.tb-nav-text:disabled{color:#ccc;cursor:default}
+.tb-nav-text:disabled:hover{background:transparent;color:#ccc}
+.tb-divider{width:1px;background:rgba(0,0,0,.07);margin:12px 0;flex-shrink:0}
 #tour-content{
-  flex:1;padding:14px 24px;display:flex;flex-direction:column;justify-content:center;gap:5px;
-  border-left:1px solid rgba(0,0,0,.06);border-right:1px solid rgba(0,0,0,.06);overflow:hidden;
+  flex:1;padding:0 20px;display:flex;flex-direction:column;justify-content:center;gap:3px;
+  overflow:hidden;min-width:0;
 }
+#bc-l1{
+  font-size:9.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;
+  color:#aaa;cursor:pointer;transition:color .2s;white-space:nowrap;
+  overflow:hidden;text-overflow:ellipsis;
+}
+#bc-l1:hover{color:#2f97da}
 #tour-name{
-  font-size:17px;font-weight:700;color:#111;letter-spacing:-.02em;
+  font-size:14px;font-weight:700;color:#111;letter-spacing:-.01em;
   white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
 }
-#tour-desc{font-size:12px;color:#999;line-height:1.4;max-height:32px;overflow:hidden;font-weight:400}
-#tour-chips{display:flex;gap:6px;flex-wrap:nowrap;overflow:hidden;margin-top:3px}
+#tour-desc{font-size:11px;color:#aaa;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:none}
+#tour-chips{display:flex;gap:5px;flex-wrap:nowrap;overflow:hidden}
 .chip{
-  padding:5px 13px;border-radius:20px;border:1px solid #e2e2e2;
-  background:rgba(255,255,255,.9);font-size:11px;color:#555;cursor:pointer;
+  padding:4px 11px;border-radius:20px;border:1px solid #e2e2e2;
+  background:rgba(255,255,255,.9);font-size:10.5px;color:#555;cursor:pointer;
   white-space:nowrap;transition:all .2s cubic-bezier(.4,0,.2,1);flex-shrink:0;
   font-family:'Lato',sans-serif;font-weight:700;
 }
 .chip:hover{background:#1A4040;color:#fff;border-color:#1A4040}
 .chip.l3-chip{background:#f2f2f2;border-color:#ddd;color:#555}
 .tb-right-panel{
-  display:flex;flex-direction:column;align-items:center;justify-content:center;
-  gap:8px;padding:0 24px;flex-shrink:0;border-left:1px solid rgba(0,0,0,.06);
+  display:flex;align-items:center;justify-content:center;
+  gap:8px;padding:0 16px;flex-shrink:0;
 }
-#tour-counter{font-size:11px;color:#bbb;letter-spacing:.06em;font-weight:700}
+#tour-counter{font-size:10.5px;color:#bbb;letter-spacing:.06em;font-weight:700;white-space:nowrap}
 #tour-jump{
-  padding:6px 12px;border:1px solid #e0e0e0;border-radius:8px;
-  font-size:12px;color:#555;background:#fff;cursor:pointer;max-width:170px;
+  padding:5px 10px;border:1px solid #e0e0e0;border-radius:8px;
+  font-size:11px;color:#555;background:#fff;cursor:pointer;max-width:150px;
   font-family:'Lato',sans-serif;
 }
 #btn-tour{
-  padding:8px 22px;border-radius:20px;border:none;cursor:pointer;
-  font-size:12px;font-weight:700;letter-spacing:.03em;
+  padding:7px 18px;border-radius:20px;border:none;cursor:pointer;
+  font-size:11.5px;font-weight:700;letter-spacing:.03em;
   font-family:'Lato',sans-serif;
   background:#1A4040;color:#fff;transition:background .2s,transform .1s;
+  white-space:nowrap;
 }
 #btn-tour:hover{background:#0e2b2b;transform:scale(1.02)}
 #btn-tour:active{transform:scale(0.97)}
 #btn-tour.active{background:#c0392b}
 #btn-tour.active:hover{background:#a93226}
 
-/* ── BREADCRUMB ── */
-#breadcrumb{
-  font-size:11px;color:#aaa;padding:0 20px;
-  display:flex;align-items:center;gap:8px;flex-shrink:0;
-  border-right:1px solid #f0f0f0;height:100%;
-  flex-direction:column;justify-content:center;gap:4px;min-width:140px;
-}
-.bc-step{cursor:pointer;transition:color .2s}
-.bc-step:hover{color:#1A4040}
-.bc-step.active{color:#111;font-weight:500}
-.bc-arrow{color:#ddd}
-
 /* ── OVERVIEW OVERLAY ── */
 #overview-hint{
   position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);
-  background:rgba(255,255,255,.95);border:1px solid #e8e8e8;border-radius:12px;
-  padding:28px 36px;text-align:center;z-index:300;
-  box-shadow:0 8px 40px rgba(0,0,0,.12);max-width:400px;
+  background:rgba(255,255,255,.95);border:1px solid #e8e8e8;border-radius:16px;
+  padding:36px 40px 32px;text-align:center;z-index:300;
+  box-shadow:0 8px 40px rgba(0,0,0,.12);max-width:420px;width:90%;
   transition:opacity .4s;
 }
-#overview-hint h2{font-size:20px;font-weight:600;margin-bottom:8px}
-#overview-hint p{font-size:12px;color:#888;line-height:1.6;margin-bottom:20px}
+#overview-hint-close{
+  position:absolute;top:14px;right:14px;
+  width:32px;height:32px;border:none;background:transparent;
+  cursor:pointer;color:#bbb;display:flex;align-items:center;justify-content:center;
+  border-radius:8px;transition:background .15s,color .15s;
+}
+#overview-hint-close:hover{background:#f4f4f4;color:#555}
+#overview-hint h2{font-size:22px;font-weight:700;letter-spacing:-.02em;margin-bottom:10px;color:#111}
+#overview-hint p{font-size:12.5px;color:#888;line-height:1.7;margin-bottom:24px}
 #overview-hint .btn-primary{
   padding:10px 28px;border-radius:20px;border:none;cursor:pointer;
   background:#2f97da;color:#fff;font-size:13px;font-weight:700;
@@ -190,19 +198,6 @@ body.sitemap .card{opacity:0;pointer-events:none}
 #overview-hint .btn-sec:hover{color:#666}
 #overview-hint.hidden{opacity:0;pointer-events:none}
 
-/* ── MINIMAP ── */
-#minimap{
-  position:fixed;bottom:112px;right:16px;
-  width:180px;height:50px;
-  background:rgba(255,255,255,.9);border:1px solid #e8e8e8;border-radius:8px;
-  overflow:hidden;z-index:150;
-  box-shadow:0 2px 12px rgba(0,0,0,.08);
-}
-#minimap-viewport{
-  position:absolute;border:2px solid #6B3FD4;border-radius:3px;
-  background:rgba(107,63,212,.08);pointer-events:none;
-  transition:all .3s;
-}
 
 /* ── ISLAND NAV ── */
 #island-nav{
@@ -317,35 +312,39 @@ body.sitemap .card{opacity:0;pointer-events:none}
 </div>
 
 <!-- MINIMAP -->
-<div id="minimap"><div id="minimap-viewport"></div></div>
 
 <!-- OVERVIEW HINT -->
 <div id="overview-hint">
+  <button id="overview-hint-close" onclick="closeHint()" title="Close"><i data-lucide="x" style="width:18px;height:18px;stroke-width:2.5"></i></button>
   <h2>Bharti.com &nbsp;·&nbsp; IA Explorer</h2>
-  <p>Full information architecture across 9 primary sections and 38 page templates.<br>Pan freely or take a guided tour.</p>
-  <button class="btn-sec" onclick="closeHint()">Skip</button>
-  <button class="btn-primary" onclick="startTour()">▶ &nbsp;Start Guided Tour</button>
+  <p>9 sections &nbsp;·&nbsp; 38 page templates<br>Use navigation buttons or pan freely</p>
+  <button class="btn-primary" onclick="startTour()"><i data-lucide="play" style="width:14px;height:14px;fill:currentColor;stroke:none;display:inline-block;vertical-align:middle;margin-right:6px"></i>Start Guided Tour</button>
 </div>
 
-<!-- TOUR BAR -->
+<!-- TOUR BAR (FLOATING ISLAND) -->
 <div id="tourbar">
-  <div id="breadcrumb">
-    <span class="bc-step" id="bc-l1" onclick="goBackToL1()">—</span>
-  </div>
-  <button class="tb-nav" id="btn-prev" onclick="prevStop()" disabled>‹</button>
+  <button class="tb-nav-text" id="btn-prev" onclick="prevStop()" disabled>
+    <i data-lucide="chevron-left" style="width:14px;height:14px;stroke-width:2.5"></i>Previous
+  </button>
+  <div class="tb-divider"></div>
   <div id="tour-content">
-    <div id="tour-name">Ready to explore</div>
-    <div id="tour-desc">Click "Start Tour" or drag the canvas to navigate freely</div>
+    <span id="bc-l1" onclick="goBackToL1()">—</span>
+    <div id="tour-name">Bharti.com — Information Architecture</div>
+    <div id="tour-desc"></div>
     <div id="tour-chips"></div>
   </div>
+  <div class="tb-divider"></div>
   <div class="tb-right-panel">
     <div id="tour-counter">—</div>
     <select id="tour-jump" onchange="jumpToSection(this.value)">
       <option value="">Jump to section…</option>
     </select>
-    <button id="btn-tour" onclick="toggleTour()">▶ &nbsp;Start Tour</button>
+    <button id="btn-tour" onclick="toggleTour()"><i data-lucide="play" id="tour-icon" style="width:13px;height:13px;fill:currentColor;stroke:none;display:inline-block;vertical-align:middle;margin-right:5px"></i><span>Start Tour</span></button>
   </div>
-  <button class="tb-nav" id="btn-next" onclick="nextStop()">›</button>
+  <div class="tb-divider"></div>
+  <button class="tb-nav-text" id="btn-next" onclick="nextStop()">
+    Next<i data-lucide="chevron-right" style="width:14px;height:14px;stroke-width:2.5"></i>
+  </button>
 </div>
 
 <script>
@@ -452,6 +451,7 @@ let tx=0, ty=0, sc=0.065;
 let isPanning=false, panSX=0, panSY=0, panTX=0, panTY=0;
 let tourActive=false, currentStop=-1, currentL2idx=-1;
 let currentSectionId=null;
+const l2Opened=new Set(); // tracks which sections currently have L2 visible
 
 const canvas=document.getElementById('canvas');
 const svg=document.getElementById('svg');
@@ -590,15 +590,22 @@ function applyTransform(animate=false){
   canvas.style.transform=`translate(${tx}px,${ty}px) scale(${sc})`;
   if(animate)setTimeout(()=>canvas.style.transition='none',800);
   document.getElementById('zoom-label').textContent=Math.round(sc*100)+'%';
-  updateMinimap();
 }
 function flyTo(cx,cy,targetSc,animate=true){
   const vpw=container.clientWidth, vph=container.clientHeight;
-  tx=vpw/2-cx*targetSc;
-  ty=vph/2-cy*targetSc;
-  sc=targetSc;
-  zoomTarget={sc,tx,ty};
-  applyTransform(animate);
+  const destTx=vpw/2-cx*targetSc;
+  const destTy=vph/2-cy*targetSc;
+  if(animate){
+    // Use smooth rAF path — cancel any previous loop first
+    if(zoomRaf){cancelAnimationFrame(zoomRaf);zoomRaf=null;}
+    zoomTarget={sc:targetSc,tx:destTx,ty:destTy};
+    zoomEase=0.2; // faster for programmatic flyTo vs wheel zoom
+    zoomRaf=requestAnimationFrame(smoothZoomStep);
+  } else {
+    tx=destTx;ty=destTy;sc=targetSc;
+    zoomTarget={sc,tx,ty};
+    applyTransform(false);
+  }
 }
 function zoom(factor){
   const vpw=container.clientWidth, vph=container.clientHeight;
@@ -618,8 +625,14 @@ function sectionScale(sec){
   return Math.min(0.65,Math.max(0.18,(container.clientWidth*0.85)/span));
 }
 function l2Scale(){return 0.72}
-const L1_FOCUS_SC=0.42; // scale used for L1-only view
-const L1_FOCUS_CY=490;  // vertical centre of L1 pill + card + CTA
+const L1_FOCUS_CY=545;  // vertical centre of L1 pill + card + CTA
+function l1FocusScale(){
+  // fit pill (y=310) → CTA button bottom (y=790) with padding
+  const contentH=480, contentW=CW+80;
+  const sh=container.clientHeight*0.82/contentH;
+  const sw=container.clientWidth*0.78/contentW;
+  return Math.min(sh,sw,1.5);
+}
 
 // ═══════════════════════════════════════════
 // L2 SHOW / HIDE
@@ -632,9 +645,11 @@ function hideAllL2(){
   document.querySelectorAll('.pill[data-level="l2"]').forEach(p=>p.style.display='none');
   document.querySelectorAll('.pill[data-level="l3"]').forEach(p=>p.style.display='none');
   document.querySelectorAll('.card[data-level="l2"]').forEach(c=>c.style.display='none');
+  l2Opened.clear();
 }
 function revealL2(secId){
   const sec=SECTIONS.find(s=>s.id===secId);if(!sec)return;
+  l2Opened.add(secId);
   // Show SVG group
   const g=svg.querySelector(`.l2-svg-group[data-l2sec="${secId}"]`);
   if(g)g.style.display='';
@@ -716,9 +731,9 @@ function applyStop(idx,l2idx=-1){
     if(sec&&sec.l2.length){
       const btn=canvas.querySelector(`.show-l2-btn[data-l2sec="${stop.id}"]`);
       if(btn)btn.classList.add('visible');
-      flyTo(stop.cx,L1_FOCUS_CY,L1_FOCUS_SC);
+      flyTo(stop.cx,L1_FOCUS_CY,l1FocusScale());
     } else {
-      flyTo(stop.cx,stop.cy,stop.sc||0.75);
+      flyTo(stop.cx,L1_FOCUS_CY,l1FocusScale());
     }
     updateBar(stop,null);
     if(sec){highlightSection(stop.id);syncIslandNav(stop.id);}
@@ -770,31 +785,61 @@ function updateNavButtons(){
   document.getElementById('btn-next').disabled=currentStop>=mainStops.length-1&&currentL2idx<0;
 }
 function nextStop(){
+  const stop=mainStops[currentStop];
+  const sec=stop?stop.data:null;
   if(currentL2idx>-1){
-    const stop=mainStops[currentStop];
+    // In an L2 item — step to next L2 or advance to next L1
     const next=currentL2idx+1;
-    if(next<stop.data.l2.length){applyStop(currentStop,next);return;}
-    else{applyStop(currentStop,-1);return;}
+    if(next<sec.l2.length){applyStop(currentStop,next);return;}
+    if(currentStop<mainStops.length-1){currentStop++;applyStop(currentStop);}
+    return;
   }
+  // At L1 — if L2 is currently open for this section, enter it
+  if(sec&&sec.l2.length&&l2Opened.has(sec.id)){applyStop(currentStop,0);return;}
+  // L2 closed or no L2 — jump to next L1
   if(currentStop<mainStops.length-1){currentStop++;applyStop(currentStop);}
 }
 function prevStop(){
-  if(currentL2idx>-1){applyStop(currentStop,currentL2idx-1>-1?currentL2idx-1:-1);return;}
+  if(currentL2idx>-1){
+    // In L2 — step back through L2 or return to L1
+    if(currentL2idx>0){applyStop(currentStop,currentL2idx-1);return;}
+    applyStop(currentStop,-1);
+    return;
+  }
+  // At L1 — go to previous L1
   if(currentStop>0){currentStop--;applyStop(currentStop);}
 }
+function setTourBtnState(active){
+  const btn=document.getElementById('btn-tour');
+  const icon=document.getElementById('tour-icon');
+  if(active){
+    btn.classList.add('active');
+    icon.setAttribute('data-lucide','square');
+    icon.style.fill='currentColor';icon.style.stroke='none';
+    btn.lastChild.textContent='Stop Tour';
+  } else {
+    btn.classList.remove('active');
+    icon.setAttribute('data-lucide','play');
+    icon.style.fill='currentColor';icon.style.stroke='none';
+    btn.lastChild.textContent='Start Tour';
+  }
+  lucide.createIcons({nodes:[icon]});
+}
 function startTour(){
-  closeHint();tourActive=true;
-  document.getElementById('btn-tour').textContent='■ Stop Tour';
-  document.getElementById('btn-tour').classList.add('active');
+  document.getElementById('overview-hint').classList.add('hidden');
+  tourActive=true;
+  setTourBtnState(true);
   currentStop=1;applyStop(1);
 }
 function stopTour(){
   tourActive=false;
-  document.getElementById('btn-tour').textContent='▶ Start Tour';
-  document.getElementById('btn-tour').classList.remove('active');
+  setTourBtnState(false);
 }
 function toggleTour(){tourActive?stopTour():startTour();}
-function closeHint(){document.getElementById('overview-hint').classList.add('hidden')}
+function closeHint(){
+  document.getElementById('overview-hint').classList.add('hidden');
+  focusSection('home');
+}
 
 // ═══════════════════════════════════════════
 // ISLAND NAV
@@ -858,20 +903,20 @@ document.addEventListener('mousemove',e=>{
   if(!isPanning)return;
   tx=panTX+(e.clientX-panSX);ty=panTY+(e.clientY-panSY);
   canvas.style.transform=`translate(${tx}px,${ty}px) scale(${sc})`;
-  updateMinimap();
 });
 document.addEventListener('mouseup',()=>{if(isPanning){isPanning=false;container.classList.remove('panning');}});
 // Smooth zoom — accumulate delta and animate with rAF
 let zoomTarget={sc,tx,ty};
 let zoomRaf=null;
+let zoomEase=0.12; // wheel zoom: gentle; flyTo overrides to faster
 function smoothZoomStep(){
-  const ease=0.12;
+  const ease=zoomEase;
   const dsc=zoomTarget.sc-sc;
   const dtx=zoomTarget.tx-tx;
   const dty=zoomTarget.ty-ty;
-  if(Math.abs(dsc)<0.0001&&Math.abs(dtx)<0.1&&Math.abs(dty)<0.1){
+  if(Math.abs(dsc)<0.0002&&Math.abs(dtx)<0.15&&Math.abs(dty)<0.15){
     sc=zoomTarget.sc;tx=zoomTarget.tx;ty=zoomTarget.ty;
-    applyTransform(false);zoomRaf=null;return;
+    applyTransform(false);zoomRaf=null;zoomEase=0.12;return;
   }
   sc+=dsc*ease;tx+=dtx*ease;ty+=dty*ease;
   applyTransform(false);
@@ -900,22 +945,6 @@ document.addEventListener('keydown',e=>{
   if(e.key==='Escape'){clearHighlight();stopTour();}
 });
 
-// ═══════════════════════════════════════════
-// MINIMAP
-// ═══════════════════════════════════════════
-function updateMinimap(){
-  const mm=document.getElementById('minimap');
-  const vp=document.getElementById('minimap-viewport');
-  const mmW=mm.clientWidth,mmH=mm.clientHeight;
-  const cW=22400,cH=2000;
-  const msX=mmW/cW,msY=mmH/cH;
-  const vpW=container.clientWidth/sc,vpH=container.clientHeight/sc;
-  const vpX=-tx/sc,vpY=-ty/sc;
-  vp.style.left=Math.max(0,vpX*msX)+'px';
-  vp.style.top=Math.max(0,vpY*msY)+'px';
-  vp.style.width=Math.min(mmW,vpW*msX)+'px';
-  vp.style.height=Math.min(mmH,vpH*msY)+'px';
-}
 
 // ═══════════════════════════════════════════
 // INIT
@@ -929,7 +958,9 @@ const vpw=container.clientWidth,vph=container.clientHeight;
 tx=vpw/2-START_CX*sc; ty=vph/2-600*sc;
 zoomTarget={sc,tx,ty};
 applyTransform(false);
-updateMinimap();
+
+// Init Lucide icons
+lucide.createIcons();
 
 // Default bar state
 document.getElementById('tour-name').textContent='Bharti.com — Information Architecture';
