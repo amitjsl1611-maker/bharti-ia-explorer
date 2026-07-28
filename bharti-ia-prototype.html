@@ -386,6 +386,50 @@ body.sitemap .card{opacity:0;pointer-events:none}
 }
 .section-box.visible{opacity:1}
 
+/* ── SITEMAP L2 TOGGLE BUTTON ── */
+.sm-l2-toggle{
+  position:absolute;
+  cursor:pointer;
+  background:#fff;border:1.5px solid #3D6B35;
+  border-radius:20px;padding:4px 10px;
+  font-size:8.5px;font-weight:800;color:#3D6B35;
+  font-family:'Lato',sans-serif;
+  white-space:nowrap;z-index:5;
+  transition:background .15s,color .15s;
+  letter-spacing:.03em;
+}
+.sm-l2-toggle:hover{background:#3D6B35;color:#fff;}
+.sm-l2-toggle.utility{border-color:#1A3A5C;color:#1A3A5C}
+.sm-l2-toggle.utility:hover{background:#1A3A5C;color:#fff}
+
+/* ── IA TOAST ── */
+#ia-toast{
+  position:fixed;top:88px;left:50%;transform:translateX(-50%);
+  background:#111;color:#fff;padding:10px 22px;border-radius:20px;
+  font-size:12px;font-weight:700;letter-spacing:.01em;
+  font-family:'Lato',sans-serif;z-index:500;
+  opacity:0;pointer-events:none;
+  transition:opacity .3s ease;white-space:nowrap;
+  box-shadow:0 4px 20px rgba(0,0,0,.22);
+}
+#ia-toast.show{opacity:1;}
+
+/* ── BACK TO SITEMAP BUTTON ── */
+#back-to-sm{
+  position:fixed;bottom:82px;left:50%;transform:translateX(-50%);
+  font-size:11px;font-weight:700;color:#6B3FD4;letter-spacing:.01em;
+  cursor:pointer;z-index:200;
+  background:rgba(255,255,255,.92);padding:5px 16px;border-radius:20px;
+  border:1.5px solid rgba(107,63,212,.35);
+  font-family:'Lato',sans-serif;
+  display:none;opacity:0;
+  transition:opacity .3s,background .15s;
+  white-space:nowrap;
+  box-shadow:0 2px 12px rgba(107,63,212,.12);
+}
+#back-to-sm.visible{opacity:1;}
+#back-to-sm:hover{background:rgba(107,63,212,.07);}
+
 /* ── SHOW L2 CTA ── */
 .show-l2-btn{
   position:absolute;display:none;flex-direction:column;align-items:center;
@@ -569,6 +613,12 @@ body.sitemap .card{opacity:0;pointer-events:none}
   <button class="btn-primary" onclick="startTour()"><i data-lucide="play" style="width:14px;height:14px;fill:currentColor;stroke:none;display:inline-block;vertical-align:middle;margin-right:6px"></i>Start Guided Tour</button>
 </div>
 
+<!-- IA MODE TOAST -->
+<div id="ia-toast"></div>
+
+<!-- BACK TO SITEMAP -->
+<div id="back-to-sm" onclick="backToSitemap()">← Back to Sitemap</div>
+
 <!-- TOUR BAR (FLOATING ISLAND) -->
 <div id="tourbar">
   <div id="tour-content">
@@ -703,6 +753,7 @@ const smCanvas=document.getElementById('sm-canvas');
 const smSvg=document.getElementById('sm-svg');
 let smTx=0,smTy=0,smSc=0.3;
 let smBuilt=false,isSMMode=false,smSecIdx=0;
+const smL2Open=new Set(); // tracks which L1 sections have L2 expanded in sitemap
 // Section X positions used in sitemap — must match buildSitemapCanvas
 const SM_SEC_CXS=[200,540,880,1220,1560,1900,2240,2580,2920];
 const SM_L1_Y_REF=148; // L1 pill top in sitemap
@@ -720,18 +771,22 @@ function buildSitemapCanvas(){
   const SM_SPINE_Y=120,SM_L1_Y=148,SM_L1_PW=180,SM_L1_PH=26;
   const SM_L2_STY=220,SM_L2_ROW_H=50,SM_L2_PW=190,SM_L2_PH=24;
   const SM_SCX=1560,SM_STY=46;
-  function smPill(label,cls,x,y,w,h){
+  function smPill(label,cls,x,y,w,h,opts={}){
     const p=elt('div',`pill ${cls}`);
     p.textContent=label;
     p.style.cssText=`left:${x-w/2}px;top:${y}px;width:${w}px;height:${h}px;font-size:10px`;
+    if(opts.hidden)p.style.display='none';
+    if(opts.cursor)p.style.cursor=opts.cursor;
+    if(opts.dataset)Object.entries(opts.dataset).forEach(([k,v])=>p.dataset[k]=v);
+    if(opts.onclick)p.onclick=opts.onclick;
     smCanvas.appendChild(p);return p;
   }
-  function smLine(x1,y1,x2,y2){
+  function smLine(x1,y1,x2,y2,g){
     const l=svgEl('line',{x1,y1,x2,y2,stroke:'#8B5FD4','stroke-width':'1.5','stroke-linecap':'round'});
-    smSvg.appendChild(l);
+    (g||smSvg).appendChild(l);
   }
-  function smDot(cx,cy){
-    smSvg.appendChild(svgEl('circle',{cx,cy,r:'3',fill:'#8B5FD4'}));
+  function smDot(cx,cy,g){
+    (g||smSvg).appendChild(svgEl('circle',{cx,cy,r:'3',fill:'#8B5FD4'}));
   }
   // Start pill + connector to spine
   smPill('BHARTI.COM','pill-start',SM_SCX,SM_STY,160,30);
@@ -746,24 +801,91 @@ function buildSitemapCanvas(){
     const cls=sec.utility?'pill-l1 utility':'pill-l1';
     smPill(sec.name,cls,cx,SM_L1_Y,SM_L1_PW,SM_L1_PH);
     if(!sec.l2.length)return;
+    // Toggle button below L1 pill
+    const toggleBtn=document.createElement('div');
+    toggleBtn.className='sm-l2-toggle'+(sec.utility?' utility':'');
+    toggleBtn.dataset.smsec=sec.id;
+    toggleBtn.textContent='+ Show pages';
+    toggleBtn.style.cssText=`left:${cx-42}px;top:${SM_L1_Y+SM_L1_PH+7}px`;
+    toggleBtn.onclick=(e)=>{e.stopPropagation();toggleSmL2(sec.id);};
+    smCanvas.appendChild(toggleBtn);
+    // SVG group for L2 connectors (hidden by default)
+    const l2g=svgEl('g',{'class':'sm-l2g','data-smsec':sec.id});
+    l2g.style.display='none';
+    smSvg.appendChild(l2g);
     const n=sec.l2.length;
     const branchX=cx-SM_L2_PW/2-18;
     const firstCY=SM_L2_STY+SM_L2_PH/2;
     const lastCY=SM_L2_STY+(n-1)*SM_L2_ROW_H+SM_L2_PH/2;
-    // L1 bottom → down to first L2 row → left elbow to branch line
-    smLine(cx,SM_L1_Y+SM_L1_PH,cx,firstCY);
-    smLine(cx,firstCY,branchX,firstCY);
-    // Vertical branch line connecting all L2 rows
-    if(n>1)smLine(branchX,firstCY,branchX,lastCY);
+    smLine(cx,SM_L1_Y+SM_L1_PH,cx,firstCY,l2g);
+    smLine(cx,firstCY,branchX,firstCY,l2g);
+    if(n>1)smLine(branchX,firstCY,branchX,lastCY,l2g);
     sec.l2.forEach((l2,i)=>{
       const l2Y=SM_L2_STY+i*SM_L2_ROW_H;
       const l2CY=l2Y+SM_L2_PH/2;
-      smDot(branchX,l2CY);
-      smLine(branchX,l2CY,cx-SM_L2_PW/2,l2CY);
+      smDot(branchX,l2CY,l2g);
+      smLine(branchX,l2CY,cx-SM_L2_PW/2,l2CY,l2g);
       const l2cls=sec.utility?'pill-l2 utility':'pill-l2';
-      smPill(l2.name,l2cls,cx,l2Y,SM_L2_PW,SM_L2_PH);
+      const l2p=smPill(l2.name,l2cls,cx,l2Y,SM_L2_PW,SM_L2_PH,{
+        hidden:true,
+        cursor:'pointer',
+        dataset:{smsec:sec.id,sml2idx:String(i)},
+        onclick:(e)=>{e.stopPropagation();smL2Click(sec.id,i);}
+      });
     });
   });
+}
+
+function toggleSmL2(secId){
+  const sec=SECTIONS.find(s=>s.id===secId);if(!sec||!sec.l2.length)return;
+  const isOpen=smL2Open.has(secId);
+  if(isOpen){smL2Open.delete(secId);}else{smL2Open.add(secId);}
+  const nowOpen=!isOpen;
+  smCanvas.querySelectorAll(`.pill[data-smsec="${secId}"]`).forEach(p=>{
+    p.style.display=nowOpen?'':'none';
+  });
+  const g=smSvg.querySelector(`.sm-l2g[data-smsec="${secId}"]`);
+  if(g)g.style.display=nowOpen?'':'none';
+  const btn=smCanvas.querySelector(`.sm-l2-toggle[data-smsec="${secId}"]`);
+  if(btn)btn.textContent=nowOpen?'− Hide pages':'+ Show pages';
+  // Re-focus to show expanded content if open
+  if(nowOpen){
+    const idx=SECTIONS.findIndex(s=>s.id===secId);
+    if(idx>=0) focusSection(secId);
+  }
+}
+
+function smL2Click(secId,l2idx){
+  setMode('ia');
+  // Reveal L2 for this section then zoom to the selected L2
+  revealL2(secId);
+  const stopIdx=mainStops.findIndex(s=>s.id===secId);
+  if(stopIdx>-1){currentStop=stopIdx;applyStop(stopIdx,l2idx);}
+  showToast('Switched to IA view');
+  showBackToSm();
+}
+
+function showToast(msg){
+  const t=document.getElementById('ia-toast');
+  t.textContent=msg;
+  t.classList.add('show');
+  clearTimeout(t._timer);
+  t._timer=setTimeout(()=>t.classList.remove('show'),2500);
+}
+
+function showBackToSm(){
+  const btn=document.getElementById('back-to-sm');
+  btn.style.display='block';
+  requestAnimationFrame(()=>btn.classList.add('visible'));
+}
+function hideBackToSm(){
+  const btn=document.getElementById('back-to-sm');
+  btn.classList.remove('visible');
+  setTimeout(()=>{if(!btn.classList.contains('visible'))btn.style.display='none';},300);
+}
+function backToSitemap(){
+  hideBackToSm();
+  setMode('sitemap');
 }
 
 // ═══════════════════════════════════════════
@@ -1232,13 +1354,16 @@ function setMode(m){
   canvas.style.display=isSMMode?'none':'block';
   smCanvas.style.display=isSMMode?'block':'none';
   if(isSMMode){
+    hideBackToSm();
     if(!smBuilt){buildSitemapCanvas();smBuilt=true;}
     const vpw=container.clientWidth||1280,vph=container.clientHeight||600;
-    smSc=Math.min(vpw/3100,vph/780)*0.86;
-    smTx=vpw/2-1560*smSc;smTy=vph/2-380*smSc;
+    // Zoom to show ~5 sections clearly so pills are big and readable
+    smSc=Math.min(vpw/1800,vph/560)*0.92;
+    smTx=vpw/2-1560*smSc;smTy=vph/2-280*smSc;
     applyTransformSM();
-    smSecIdx=0;updateSmNavBtns();
+    smSecIdx=0;updateSmNavBtns();syncIslandNav(null);
   } else {
+    hideBackToSm();
     resetView();
   }
 }
