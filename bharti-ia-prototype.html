@@ -90,6 +90,67 @@ html,body{width:100%;height:100%;overflow:hidden;font-family:'Lato',sans-serif;f
   text-align:center;width:44px;line-height:1;
 }
 
+/* ── PASSWORD GATE ── */
+#pw-overlay{
+  position:fixed;inset:0;z-index:9999;
+  backdrop-filter:blur(18px) saturate(140%);
+  background:rgba(240,240,240,.55);
+  display:flex;align-items:center;justify-content:center;
+}
+#pw-modal{
+  background:#fff;border-radius:20px;
+  box-shadow:0 24px 64px rgba(0,0,0,.18),0 4px 16px rgba(0,0,0,.08);
+  padding:44px 48px 40px;
+  display:flex;flex-direction:column;align-items:center;gap:0;
+  min-width:340px;max-width:420px;width:90vw;
+}
+#pw-modal .pw-logo{
+  font-family:'Lato',sans-serif;font-weight:900;
+  font-size:18px;letter-spacing:-.01em;color:#111;
+  margin-bottom:28px;
+}
+#pw-modal .pw-title{
+  font-family:'Lato',sans-serif;font-weight:900;
+  font-size:22px;color:#111;margin-bottom:8px;text-align:center;
+}
+#pw-modal .pw-sub{
+  font-family:'Lato',sans-serif;font-size:13px;color:#888;
+  margin-bottom:32px;text-align:center;line-height:1.5;
+}
+#pw-input{
+  width:100%;padding:13px 16px;border:1.5px solid #e0e0e0;
+  border-radius:10px;font-family:'Lato',sans-serif;
+  font-size:15px;font-weight:700;letter-spacing:.12em;color:#111;
+  outline:none;transition:border-color .15s;
+  text-align:center;margin-bottom:12px;
+}
+#pw-input:focus{border-color:#111;}
+#pw-input.shake{animation:shake .35s ease;}
+#pw-input.error{border-color:#e03e3e;}
+@keyframes shake{
+  0%,100%{transform:translateX(0)}
+  20%{transform:translateX(-6px)}
+  40%{transform:translateX(6px)}
+  60%{transform:translateX(-4px)}
+  80%{transform:translateX(4px)}
+}
+#pw-error{
+  font-family:'Lato',sans-serif;font-size:12px;color:#e03e3e;
+  font-weight:700;height:16px;margin-bottom:16px;text-align:center;
+}
+#pw-submit{
+  width:100%;padding:13px;border:none;border-radius:10px;
+  background:#111;color:#fff;font-family:'Lato',sans-serif;
+  font-size:14px;font-weight:700;cursor:pointer;letter-spacing:.02em;
+  transition:background .15s,transform .1s;
+}
+#pw-submit:hover{background:#333;}
+#pw-submit:active{transform:scale(.98);}
+#pw-modal .pw-hint{
+  margin-top:20px;font-family:'Lato',sans-serif;
+  font-size:10.5px;color:#ccc;text-align:center;line-height:1.5;
+}
+
 /* ── LEGEND ── */
 #legend{
   position:fixed;bottom:20px;left:20px;
@@ -356,6 +417,21 @@ body.sitemap .card{opacity:0;pointer-events:none}
 </style>
 </head>
 <body>
+
+<!-- PASSWORD GATE -->
+<div id="pw-overlay">
+  <div id="pw-modal">
+    <div class="pw-logo">NETBRAMHA<sup style="font-size:9px">TM</sup></div>
+    <div class="pw-title">Protected Document</div>
+    <div class="pw-sub">This is a private &amp; confidential file.<br>Enter the password to continue.</div>
+    <input id="pw-input" type="password" placeholder="Enter password"
+      autocomplete="off" spellcheck="false"
+      onkeydown="if(event.key==='Enter')checkPw()">
+    <div id="pw-error"></div>
+    <button id="pw-submit" onclick="checkPw()">Unlock</button>
+    <div class="pw-hint">All rights reserved · Bharti Enterprises IA Explorer</div>
+  </div>
+</div>
 
 <!-- TOP BAR -->
 <div id="topbar">
@@ -1191,6 +1267,26 @@ document.addEventListener('keydown',e=>{
 // ═══════════════════════════════════════════
 buildCanvas();
 buildIslandNav();
+
+// ═══════════════════════════════════════════
+// PASSWORD GATE
+// ═══════════════════════════════════════════
+function checkPw(){
+  const val=document.getElementById('pw-input').value.trim().toUpperCase();
+  const errEl=document.getElementById('pw-error');
+  const inp=document.getElementById('pw-input');
+  if(val==='NETBRAMHA'){
+    const overlay=document.getElementById('pw-overlay');
+    overlay.style.opacity='0';overlay.style.transition='opacity .4s ease';
+    setTimeout(()=>overlay.style.display='none',400);
+    document.getElementById('pw-input').value='';
+  } else {
+    errEl.textContent='Incorrect password. Try again.';
+    inp.classList.add('error','shake');
+    setTimeout(()=>inp.classList.remove('shake'),400);
+    setTimeout(()=>{errEl.textContent='';inp.classList.remove('error');},2500);
+  }
+}
 
 // Initial camera — center on full canvas
 const vpw=container.clientWidth,vph=container.clientHeight;
