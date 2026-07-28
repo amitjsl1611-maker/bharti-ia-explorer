@@ -465,6 +465,95 @@ body.sitemap .card{opacity:0;pointer-events:none}
   transition:background .2s,color .2s;
 }
 .show-l2-btn:hover .show-l2-label{background:#2f97da;color:#fff}
+
+/* ── COACH MARKS ── */
+#coachmark{
+  position:fixed;inset:0;z-index:8000;display:none;
+  opacity:0;transition:opacity .35s ease;
+}
+#coachmark.cm-show{opacity:1;}
+/* full-screen dimmer for centered steps */
+#cm-dimmer{
+  position:fixed;inset:0;background:rgba(18,18,24,.7);
+  backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);
+  pointer-events:auto;z-index:8001;
+  opacity:0;transition:opacity .35s ease;
+}
+#cm-dimmer.on{opacity:1;}
+/* spotlight div — box-shadow trick creates the "hole" */
+#cm-spot{
+  position:fixed;border-radius:14px;pointer-events:none;z-index:8002;
+  transition:all .42s cubic-bezier(.4,0,.2,1);
+  opacity:0;
+}
+#cm-spot.lit{
+  opacity:1;
+  box-shadow:0 0 0 9999px rgba(18,18,24,.68),0 0 0 2px rgba(255,255,255,.55),0 0 28px 4px rgba(255,255,255,.12);
+}
+/* modal card */
+#cm-modal{
+  position:fixed;z-index:8004;pointer-events:auto;
+  background:#fff;border-radius:22px;
+  padding:30px 32px 26px;width:420px;max-width:calc(100vw - 32px);
+  box-shadow:0 28px 72px rgba(0,0,0,.24),0 2px 8px rgba(0,0,0,.1);
+  font-family:'Lato',sans-serif;
+  transition:top .42s cubic-bezier(.4,0,.2,1),left .42s cubic-bezier(.4,0,.2,1),bottom .42s cubic-bezier(.4,0,.2,1),transform .42s cubic-bezier(.4,0,.2,1),opacity .35s;
+}
+/* arrow caret pointing from modal toward target */
+#cm-caret{
+  position:fixed;z-index:8003;pointer-events:none;width:0;height:0;
+  transition:all .42s cubic-bezier(.4,0,.2,1),opacity .35s;opacity:0;
+}
+#cm-caret.up{border-left:11px solid transparent;border-right:11px solid transparent;border-bottom:13px solid #fff;}
+#cm-caret.down{border-left:11px solid transparent;border-right:11px solid transparent;border-top:13px solid #fff;}
+#cm-caret.show{opacity:1;}
+/* header row */
+#cm-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;}
+#cm-dots{display:flex;gap:5px;align-items:center;}
+.cm-dot{
+  width:6px;height:6px;border-radius:50%;background:#e0e0e0;
+  transition:background .25s,transform .25s;
+}
+.cm-dot.active{background:#111;transform:scale(1.25);}
+#cm-skip{
+  border:none;background:none;cursor:pointer;padding:4px 0;
+  font-size:11px;font-weight:700;color:#bbb;font-family:'Lato',sans-serif;
+  letter-spacing:.03em;text-transform:uppercase;transition:color .15s;
+}
+#cm-skip:hover{color:#888;}
+/* step pill */
+#cm-step-pill{
+  display:inline-flex;align-items:center;gap:5px;
+  background:#F3F0FF;color:#6B3FD4;border-radius:20px;
+  padding:3px 10px;font-size:9.5px;font-weight:800;
+  letter-spacing:.08em;text-transform:uppercase;margin-bottom:10px;
+}
+/* title + body */
+#cm-title{font-size:19px;font-weight:900;color:#111;letter-spacing:-.02em;line-height:1.22;margin-bottom:10px;}
+#cm-body{font-size:12.5px;color:#666;line-height:1.72;margin-bottom:22px;white-space:pre-line;}
+/* illustration slot (used for step 5) */
+#cm-illus{display:none;margin-bottom:18px;border-radius:10px;overflow:hidden;background:#F7F7F9;padding:14px 18px;}
+#cm-illus svg{display:block;}
+/* progress bar */
+#cm-prog-wrap{height:2.5px;background:#eee;border-radius:2px;margin-bottom:22px;}
+#cm-prog-fill{height:2.5px;background:#6B3FD4;border-radius:2px;transition:width .4s cubic-bezier(.4,0,.2,1);}
+/* footer */
+#cm-foot{display:flex;align-items:center;justify-content:space-between;}
+#cm-back{
+  padding:8px 18px;border-radius:999px;border:1.5px solid #e0e0e0;
+  background:#fff;color:#999;font-size:12px;font-weight:700;
+  font-family:'Lato',sans-serif;cursor:pointer;
+  transition:border-color .15s,color .15s;
+}
+#cm-back:hover{border-color:#bbb;color:#444;}
+#cm-next{
+  padding:10px 28px;border-radius:999px;border:none;
+  background:#111;color:#fff;font-size:12.5px;font-weight:800;
+  font-family:'Lato',sans-serif;cursor:pointer;letter-spacing:.01em;
+  transition:background .15s,transform .1s;
+}
+#cm-next:hover{background:#333;}
+#cm-next:active{transform:scale(.97);}
 </style>
 </head>
 <body>
@@ -616,6 +705,28 @@ body.sitemap .card{opacity:0;pointer-events:none}
 
 <!-- BACK TO SITEMAP -->
 <div id="back-to-sm" onclick="backToSitemap()">← Back to Sitemap</div>
+
+<!-- COACH MARKS -->
+<div id="coachmark">
+  <div id="cm-dimmer"></div>
+  <div id="cm-spot"></div>
+  <div id="cm-caret"></div>
+  <div id="cm-modal">
+    <div id="cm-head">
+      <div id="cm-dots"></div>
+      <button id="cm-skip" onclick="cmSkip()">Skip</button>
+    </div>
+    <div id="cm-step-pill"><span id="cm-step-label"></span></div>
+    <h3 id="cm-title"></h3>
+    <div id="cm-illus"></div>
+    <p id="cm-body"></p>
+    <div id="cm-prog-wrap"><div id="cm-prog-fill"></div></div>
+    <div id="cm-foot">
+      <button id="cm-back" onclick="cmBack()">← Back</button>
+      <button id="cm-next" onclick="cmNext()"></button>
+    </div>
+  </div>
+</div>
 
 <!-- TOUR BAR (FLOATING ISLAND) -->
 <div id="tourbar">
@@ -1503,6 +1614,181 @@ function togglePwEye(){
   icon.setAttribute('data-lucide',show?'eye-off':'eye');
   lucide.createIcons();
 }
+/* ── COACH MARKS ── */
+const CM_STEPS=[
+  {
+    sel:null,
+    title:'Welcome to the Bharti.com IA Explorer',
+    body:'NetBramha was commissioned to reimagine the Information Architecture and Sitemap for Bharti.com — a global conglomerate spanning 6 sectors, 13 businesses, and 15+ countries.\n\nThis prototype maps the full site structure: 9 primary sections, 38 page templates, and 65–80 total URLs.',
+    pos:'center'
+  },
+  {
+    sel:'.tb-center',
+    title:'Two views, one document',
+    body:'The document is split into two interactive modes:\n\n• Sitemap — a high-level tree of all sections and pages\n• IA View — detailed per-page structure with descriptions, content types, and user actions\n\nUse this tab to switch between them anytime.',
+    pos:'below',
+    pad:14
+  },
+  {
+    sel:'#island-nav',
+    title:'Jump to any section',
+    body:'The top navigation bar lists all 9 primary sections. Click any tab to fly directly to that part of the document.\n\nThe number badge on each tab shows how many sub-pages that section contains. Works in both Sitemap and IA views.',
+    pos:'below',
+    pad:10
+  },
+  {
+    sel:'.tb-nav-group',
+    title:'Navigate step by step',
+    body:'Use Previous and Next to move through all sections in sequence.\n\nIn IA mode, this walks you through every L1 section and each of its sub-pages in order — perfect for a full guided walkthrough of the architecture.',
+    pos:'above',
+    pad:10
+  },
+  {
+    sel:null,
+    title:'Go deep with sub-pages',
+    body:'In Sitemap mode, click "+ Show pages" under any L1 section to expand its sub-pages inline.\n\nClick any sub-page card to instantly switch to the detailed IA view — that page will be shown at full zoom with all its content blocks, actions, and IA annotations.',
+    pos:'center',
+    illus:true,
+    isLast:true
+  }
+];
+
+let _cmStep=0;
+const _cmEl=()=>({
+  wrap:document.getElementById('coachmark'),
+  dimmer:document.getElementById('cm-dimmer'),
+  spot:document.getElementById('cm-spot'),
+  caret:document.getElementById('cm-caret'),
+  modal:document.getElementById('cm-modal'),
+  dots:document.getElementById('cm-dots'),
+  stepLabel:document.getElementById('cm-step-label'),
+  title:document.getElementById('cm-title'),
+  illus:document.getElementById('cm-illus'),
+  body:document.getElementById('cm-body'),
+  prog:document.getElementById('cm-prog-fill'),
+  back:document.getElementById('cm-back'),
+  next:document.getElementById('cm-next'),
+});
+
+function cmStart(){
+  const el=_cmEl();
+  // Build dots
+  el.dots.innerHTML=CM_STEPS.map((_,i)=>`<div class="cm-dot" id="cmd${i}"></div>`).join('');
+  el.wrap.style.display='block';
+  requestAnimationFrame(()=>{
+    el.wrap.classList.add('cm-show');
+    cmRender(0);
+  });
+}
+
+function cmRender(step){
+  _cmStep=step;
+  const s=CM_STEPS[step];
+  const el=_cmEl();
+  const N=CM_STEPS.length;
+
+  // Dots
+  document.querySelectorAll('.cm-dot').forEach((d,i)=>d.classList.toggle('active',i===step));
+  // Meta
+  el.stepLabel.textContent=`Step ${step+1} of ${N}`;
+  el.title.textContent=s.title;
+  el.body.textContent=s.body;
+  el.prog.style.width=((step+1)/N*100)+'%';
+  el.back.style.visibility=step===0?'hidden':'visible';
+  el.next.textContent=s.isLast?'Got it ✓':'Next →';
+
+  // Illustration for last step
+  if(s.illus){
+    el.illus.style.display='block';
+    el.illus.innerHTML=`
+      <div style="display:flex;align-items:center;gap:12px;font-family:'Lato',sans-serif;">
+        <div style="flex:1;background:#fff;border:1.5px solid #3D6B35;border-radius:10px;padding:10px 14px;">
+          <div style="font-size:10px;font-weight:800;color:#3D6B35;margin-bottom:6px;">WHO WE ARE</div>
+          <div style="display:flex;gap:6px;flex-wrap:wrap;">
+            <div style="background:#F0F8FF;border:1px solid #b3d4ed;border-radius:6px;padding:4px 8px;font-size:9px;font-weight:700;color:#1A3A5C;">About Us</div>
+            <div style="background:#F0F8FF;border:1px solid #b3d4ed;border-radius:6px;padding:4px 8px;font-size:9px;font-weight:700;color:#1A3A5C;outline:2px solid #6B3FD4;outline-offset:1px;">Leadership ↗</div>
+          </div>
+          <div style="font-size:8.5px;color:#aaa;margin-top:5px;">click any card →</div>
+        </div>
+        <div style="font-size:18px;color:#bbb;">→</div>
+        <div style="flex:1;background:#F5F0FF;border:1.5px solid #6B3FD4;border-radius:10px;padding:10px 14px;">
+          <div style="font-size:9px;font-weight:800;color:#6B3FD4;margin-bottom:4px;">IA VIEW</div>
+          <div style="font-size:9px;font-weight:700;color:#333;">Leadership</div>
+          <div style="height:4px;background:#6B3FD4;border-radius:2px;margin-top:6px;width:70%;opacity:.3;"></div>
+          <div style="height:4px;background:#6B3FD4;border-radius:2px;margin-top:4px;width:50%;opacity:.2;"></div>
+          <div style="font-size:8px;color:#aaa;margin-top:5px;">full detail zoomed in</div>
+        </div>
+      </div>`;
+  } else {
+    el.illus.style.display='none';
+    el.illus.innerHTML='';
+  }
+
+  if(s.sel){
+    // Spotlight mode
+    const target=document.querySelector(s.sel);
+    if(target){
+      const pad=s.pad||10;
+      const r=target.getBoundingClientRect();
+      el.dimmer.classList.remove('on');
+      // position + show spot
+      el.spot.style.left=(r.left-pad)+'px';
+      el.spot.style.top=(r.top-pad)+'px';
+      el.spot.style.width=(r.width+pad*2)+'px';
+      el.spot.style.height=(r.height+pad*2)+'px';
+      el.spot.classList.add('lit');
+      // position modal
+      const mw=420,gap=18;
+      const vpw=window.innerWidth,vph=window.innerHeight;
+      const modalLeft=Math.max(16,Math.min(vpw-mw-16,r.left+r.width/2-mw/2));
+      if(s.pos==='below'){
+        const top=r.bottom+pad+gap;
+        el.modal.style.top=top+'px';
+        el.modal.style.bottom='auto';
+        el.modal.style.left=modalLeft+'px';
+        el.modal.style.transform='none';
+        // caret above modal pointing up
+        el.caret.className='up show';
+        el.caret.style.top=(top-13)+'px';
+        el.caret.style.left=(modalLeft+mw/2-11)+'px';
+      } else {
+        const bottom=vph-(r.top-pad-gap);
+        el.modal.style.bottom=bottom+'px';
+        el.modal.style.top='auto';
+        el.modal.style.left=modalLeft+'px';
+        el.modal.style.transform='none';
+        // caret below modal pointing down
+        el.caret.className='down show';
+        const mh=el.modal.offsetHeight||220;
+        el.caret.style.top=(vph-bottom+mh)+'px';
+        el.caret.style.left=(modalLeft+mw/2-11)+'px';
+      }
+    }
+  } else {
+    // Centered mode
+    el.spot.classList.remove('lit');
+    el.dimmer.classList.add('on');
+    el.modal.style.top='50%';
+    el.modal.style.left='50%';
+    el.modal.style.bottom='auto';
+    el.modal.style.transform='translate(-50%,-50%)';
+    el.caret.className='';
+  }
+}
+
+function cmNext(){
+  if(_cmStep>=CM_STEPS.length-1){cmSkip();return;}
+  cmRender(_cmStep+1);
+}
+function cmBack(){
+  if(_cmStep>0)cmRender(_cmStep-1);
+}
+function cmSkip(){
+  const el=_cmEl();
+  el.wrap.classList.remove('cm-show');
+  setTimeout(()=>{el.wrap.style.display='none';},350);
+}
+
 function checkPw(){
   const val=document.getElementById('pw-input').value.trim().toUpperCase();
   const errEl=document.getElementById('pw-error');
@@ -1511,6 +1797,7 @@ function checkPw(){
     const overlay=document.getElementById('pw-overlay');
     overlay.style.opacity='0';overlay.style.transition='opacity .4s ease';
     setTimeout(()=>overlay.style.display='none',400);
+    setTimeout(()=>cmStart(),700);
     document.getElementById('pw-input').value='';
   } else {
     errEl.textContent='Incorrect password. Try again.';
