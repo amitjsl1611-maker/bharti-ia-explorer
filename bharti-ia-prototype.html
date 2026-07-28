@@ -516,8 +516,8 @@ body.sitemap .card{opacity:0;pointer-events:none}
     <div class="tb-file">Information Architecture &nbsp;v1.0</div>
   </div>
   <div class="tb-center">
-    <button class="mode-btn active" id="btn-ia" onclick="setMode('ia')">IA View</button>
-    <button class="mode-btn" id="btn-sm" onclick="setMode('sitemap')">Sitemap</button>
+    <button class="mode-btn active" id="btn-sm" onclick="setMode('sitemap')">Sitemap</button>
+    <button class="mode-btn" id="btn-ia" onclick="setMode('ia')">IA View</button>
   </div>
   <div class="tb-right">
     <svg width="112" height="12" viewBox="0 0 149 16" fill="none" xmlns="http://www.w3.org/2000/svg" style="display:block">
@@ -1459,6 +1459,11 @@ document.addEventListener('keydown',e=>{
 // ═══════════════════════════════════════════
 buildCanvas();
 buildIslandNav();
+
+// Default mode: sitemap, focused on Home
+// isSMMode starts false; setMode('sitemap') will switch and build sm-canvas
+setMode('sitemap');
+focusSection('home');
 
 // ═══════════════════════════════════════════
 // PASSWORD GATE
