@@ -607,7 +607,7 @@ function zoom(factor){
   zoomTarget.sc=newSc;
   if(!zoomRaf)zoomRaf=requestAnimationFrame(smoothZoomStep);
 }
-function resetView(){hideAllL2();hideAllCtas();flyTo(START_CX,700,0.065,true)}
+function resetView(){hideAllL2();hideAllCtas();syncIslandNav(null);flyTo(START_CX,700,0.065,true)}
 
 // Section zoom scales
 function sectionScale(sec){
@@ -616,14 +616,23 @@ function sectionScale(sec){
   const span=(Math.max(...l2cxs)-Math.min(...l2cxs))+CW+100;
   return Math.min(0.65,Math.max(0.18,(container.clientWidth*0.85)/span));
 }
-function l2Scale(){return 0.72}
 const L1_FOCUS_CY=545;  // vertical centre of L1 pill + card + CTA
 function l1FocusScale(){
-  // fit pill (y=310) → CTA button bottom (y=790) with padding
   const contentH=480, contentW=CW+80;
   const sh=container.clientHeight*0.82/contentH;
   const sw=container.clientWidth*0.78/contentW;
   return Math.min(sh,sw,1.5);
+}
+// Tight focus on a single L2 pill + card top — hides neighbouring modules
+const L2_FOCUS_CY=L2_Y+140; // ~1010, between pill and card top
+function l2FocusScale(){
+  const h=container.clientHeight||500;
+  const w=container.clientWidth||1280;
+  const contentH=L2_CARD_Y-L2_Y+180; // 254px: pill + partial card
+  const contentW=CW+40;               // 480px: one card + margin
+  const sh=h*0.92/contentH;
+  const sw=w*0.80/contentW;           // fill 80% of width with one card
+  return Math.min(Math.max(sh,sw),1.8);
 }
 
 // ═══════════════════════════════════════════
@@ -734,7 +743,7 @@ function applyStop(idx,l2idx=-1){
     // L2 stop
     const sec=stop.data;
     const l2=sec.l2[l2idx];
-    flyTo(l2.cx,1000,l2Scale());
+    flyTo(l2.cx,L2_FOCUS_CY,l2FocusScale());
     updateBar(stop,l2);
     highlightL2(stop.id,l2idx);
   }
@@ -841,10 +850,18 @@ function buildIslandNav(){
     btn.onclick=()=>focusSection(sec.id);
     nav.appendChild(btn);
   });
+  // "All" tab at the end — resets to full overview
+  const sep=document.createElement('div');sep.className='inav-sep';nav.appendChild(sep);
+  const allBtn=document.createElement('button');
+  allBtn.className='inav-tab';allBtn.dataset.secid='__all__';
+  allBtn.textContent='All';
+  allBtn.onclick=()=>resetView();
+  nav.appendChild(allBtn);
 }
 function syncIslandNav(secId){
   document.querySelectorAll('.inav-tab').forEach(btn=>{
-    btn.classList.toggle('active',btn.dataset.secid===secId);
+    const isAll=btn.dataset.secid==='__all__';
+    btn.classList.toggle('active', isAll ? !secId : btn.dataset.secid===secId);
   });
 }
 function focusSection(secId){
