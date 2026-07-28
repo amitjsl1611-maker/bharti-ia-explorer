@@ -1333,6 +1333,9 @@ function focusSection(secId){
     syncIslandNav(secId);
     smFlyTo(cx,focusCy,targetSc);
     updateSmNavBtns();
+    // Keep bottom tourbar in sync with island nav
+    const stopIdx=mainStops.findIndex(s=>s.id===secId);
+    if(stopIdx>-1)updateBar(mainStops[stopIdx],null);
     return;
   }
   const idx=mainStops.findIndex(s=>s.id===secId);
