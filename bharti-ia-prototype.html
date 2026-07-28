@@ -37,15 +37,35 @@ html,body{width:100%;height:100%;overflow:hidden;font-family:'Lato',sans-serif;f
   box-shadow:0 2px 8px rgba(47,151,218,.15),0 1px 3px rgba(0,0,0,.08);
 }
 .tb-right{display:flex;align-items:center;gap:8px}
-.zoom-btn{
-  width:32px;height:32px;border:1px solid #e0e0e0;border-radius:8px;
-  background:#fff;cursor:pointer;font-size:15px;color:#555;
-  display:flex;align-items:center;justify-content:center;
-  transition:border-color .15s,background .15s;
+
+/* ── FLOATING ZOOM ISLAND (Maps-style) ── */
+#zoom-island{
+  position:fixed;bottom:88px;right:20px;
+  background:rgba(255,255,255,.96);backdrop-filter:blur(12px) saturate(180%);
+  border:1px solid rgba(0,0,0,.09);border-radius:12px;
+  box-shadow:0 4px 20px rgba(0,0,0,.13),0 1px 4px rgba(0,0,0,.06);
+  display:flex;flex-direction:column;align-items:center;
+  overflow:hidden;z-index:200;width:44px;
 }
-.zoom-btn:hover{border-color:#999;background:#f7f7f7}
-.zoom-label{font-size:12px;color:#999;min-width:42px;text-align:center;font-weight:700}
-.kbd-hint{font-size:11px;color:#bbb;letter-spacing:.01em}
+.zi-btn{
+  width:44px;height:44px;border:none;background:transparent;
+  cursor:pointer;color:#333;
+  display:flex;align-items:center;justify-content:center;
+  transition:background .12s;
+}
+.zi-btn:hover{background:rgba(0,0,0,.05)}
+.zi-btn:active{background:rgba(0,0,0,.1)}
+.zi-divider{width:28px;height:1px;background:#e0e0e0}
+.zi-label{
+  font-size:10px;font-weight:700;color:#888;
+  padding:5px 0 6px;font-family:'Lato',sans-serif;letter-spacing:.01em;
+  line-height:1;
+}
+#zoom-label{
+  font-size:10px;font-weight:700;color:#888;
+  padding:5px 0 6px;font-family:'Lato',sans-serif;
+  text-align:center;width:44px;line-height:1;
+}
 
 /* ── CANVAS CONTAINER ── */
 #container{
@@ -67,6 +87,20 @@ html,body{width:100%;height:100%;overflow:hidden;font-family:'Lato',sans-serif;f
 
 /* ── SVG OVERLAY ── */
 #svg{position:absolute;top:0;left:0;width:22400px;height:2000px;pointer-events:none;overflow:visible}
+
+/* ── SITEMAP CANVAS ── */
+#sm-canvas{
+  position:absolute;top:0;left:0;
+  width:3200px;height:800px;
+  transform-origin:0 0;
+  will-change:transform;
+  display:none;
+}
+#sm-svg{position:absolute;top:0;left:0;width:3200px;height:800px;pointer-events:none;overflow:visible}
+/* sitemap pills: compact, no hover cards */
+#sm-canvas .pill{font-size:10px;cursor:default}
+#sm-canvas .pill-l1{height:26px;line-height:26px;width:180px}
+#sm-canvas .pill-l2{height:24px;line-height:24px;font-size:9.5px}
 
 /* ── PILLS ── */
 .pill{
@@ -287,14 +321,24 @@ body.sitemap .card{opacity:0;pointer-events:none}
     <button class="mode-btn active" id="btn-ia" onclick="setMode('ia')">IA View</button>
     <button class="mode-btn" id="btn-sm" onclick="setMode('sitemap')">Sitemap</button>
   </div>
-  <div class="tb-right">
-    <button class="zoom-btn" onclick="zoom(1.25)">+</button>
-    <div class="zoom-label" id="zoom-label">7%</div>
-    <button class="zoom-btn" onclick="zoom(0.8)">−</button>
-    <button class="zoom-btn" onclick="resetView()" title="Reset view (R)">⊡</button>
-    <div class="tb-sep"></div>
-    <div class="kbd-hint">← → Navigate &nbsp;·&nbsp; Scroll Zoom &nbsp;·&nbsp; Drag Pan</div>
-  </div>
+  <div class="tb-right"></div>
+</div>
+
+<!-- ZOOM ISLAND -->
+<div id="zoom-island">
+  <button class="zi-btn" onclick="zoom(1.25)" title="Zoom in">
+    <i data-lucide="plus" style="width:18px;height:18px;stroke-width:2.5"></i>
+  </button>
+  <div class="zi-divider"></div>
+  <div id="zoom-label">7%</div>
+  <div class="zi-divider"></div>
+  <button class="zi-btn" onclick="zoom(0.8)" title="Zoom out">
+    <i data-lucide="minus" style="width:18px;height:18px;stroke-width:2.5"></i>
+  </button>
+  <div class="zi-divider"></div>
+  <button class="zi-btn" onclick="resetView()" title="Reset view (R)">
+    <i data-lucide="maximize-2" style="width:15px;height:15px;stroke-width:2"></i>
+  </button>
 </div>
 
 <!-- ISLAND NAV -->
@@ -304,6 +348,9 @@ body.sitemap .card{opacity:0;pointer-events:none}
 <div id="container">
   <div id="canvas">
     <svg id="svg"></svg>
+  </div>
+  <div id="sm-canvas">
+    <svg id="sm-svg"></svg>
   </div>
 </div>
 
@@ -448,6 +495,64 @@ const l2Opened=new Set(); // tracks which sections currently have L2 visible
 const canvas=document.getElementById('canvas');
 const svg=document.getElementById('svg');
 const container=document.getElementById('container');
+const smCanvas=document.getElementById('sm-canvas');
+const smSvg=document.getElementById('sm-svg');
+let smTx=0,smTy=0,smSc=0.3;
+let smBuilt=false,isSMMode=false;
+function applyTransformSM(){
+  smCanvas.style.transform=`translate(${smTx}px,${smTy}px) scale(${smSc})`;
+  document.getElementById('zoom-label').textContent=Math.round(smSc*100)+'%';
+}
+function buildSitemapCanvas(){
+  const SEC_CXS=[200,540,880,1220,1560,1900,2240,2580,2920];
+  const SM_SPINE_Y=120,SM_L1_Y=148,SM_L1_PW=180,SM_L1_PH=26;
+  const SM_L2_STY=220,SM_L2_ROW_H=50,SM_L2_PW=190,SM_L2_PH=24;
+  const SM_SCX=1560,SM_STY=46;
+  function smPill(label,cls,x,y,w,h){
+    const p=elt('div',`pill ${cls}`);
+    p.textContent=label;
+    p.style.cssText=`left:${x-w/2}px;top:${y}px;width:${w}px;height:${h}px;font-size:10px`;
+    smCanvas.appendChild(p);return p;
+  }
+  function smLine(x1,y1,x2,y2){
+    const l=svgEl('line',{x1,y1,x2,y2,stroke:'#8B5FD4','stroke-width':'1.5','stroke-linecap':'round'});
+    smSvg.appendChild(l);
+  }
+  function smDot(cx,cy){
+    smSvg.appendChild(svgEl('circle',{cx,cy,r:'3',fill:'#8B5FD4'}));
+  }
+  // Start pill + connector to spine
+  smPill('BHARTI.COM','pill-start',SM_SCX,SM_STY,160,30);
+  smLine(SM_SCX,SM_STY+30,SM_SCX,SM_SPINE_Y);
+  // Spine
+  smLine(SEC_CXS[0],SM_SPINE_Y,SEC_CXS[SEC_CXS.length-1],SM_SPINE_Y);
+  smDot(SM_SCX,SM_SPINE_Y);
+  SECTIONS.forEach((sec,idx)=>{
+    const cx=SEC_CXS[idx];
+    smDot(cx,SM_SPINE_Y);
+    smLine(cx,SM_SPINE_Y,cx,SM_L1_Y);
+    const cls=sec.utility?'pill-l1 utility':'pill-l1';
+    smPill(sec.name,cls,cx,SM_L1_Y,SM_L1_PW,SM_L1_PH);
+    if(!sec.l2.length)return;
+    const n=sec.l2.length;
+    const branchX=cx-SM_L2_PW/2-18;
+    const firstCY=SM_L2_STY+SM_L2_PH/2;
+    const lastCY=SM_L2_STY+(n-1)*SM_L2_ROW_H+SM_L2_PH/2;
+    // L1 bottom → down to first L2 row → left elbow to branch line
+    smLine(cx,SM_L1_Y+SM_L1_PH,cx,firstCY);
+    smLine(cx,firstCY,branchX,firstCY);
+    // Vertical branch line connecting all L2 rows
+    if(n>1)smLine(branchX,firstCY,branchX,lastCY);
+    sec.l2.forEach((l2,i)=>{
+      const l2Y=SM_L2_STY+i*SM_L2_ROW_H;
+      const l2CY=l2Y+SM_L2_PH/2;
+      smDot(branchX,l2CY);
+      smLine(branchX,l2CY,cx-SM_L2_PW/2,l2CY);
+      const l2cls=sec.utility?'pill-l2 utility':'pill-l2';
+      smPill(l2.name,l2cls,cx,l2Y,SM_L2_PW,SM_L2_PH);
+    });
+  });
+}
 
 // ═══════════════════════════════════════════
 // RENDER ENGINE
@@ -877,11 +982,23 @@ function focusL2(secId,l2idx){
 // MODE SWITCHING
 // ═══════════════════════════════════════════
 function setMode(m){
-  document.body.classList.toggle('sitemap',m==='sitemap');
+  isSMMode=m==='sitemap';
+  document.body.classList.toggle('sitemap',isSMMode);
   document.getElementById('btn-ia').classList.toggle('active',m==='ia');
   document.getElementById('btn-sm').classList.toggle('active',m==='sitemap');
-  // always reset to full overview so pills are visible
-  resetView();
+  canvas.style.display=isSMMode?'none':'';
+  smCanvas.style.display=isSMMode?'':'none';
+  document.getElementById('tourbar').style.display=isSMMode?'none':'';
+  document.getElementById('island-nav').style.display=isSMMode?'none':'';
+  if(isSMMode){
+    if(!smBuilt){buildSitemapCanvas();smBuilt=true;}
+    const vpw=container.clientWidth||1280,vph=container.clientHeight||600;
+    smSc=Math.min(vpw/3100,vph/780)*0.86;
+    smTx=vpw/2-1560*smSc;smTy=vph/2-380*smSc;
+    applyTransformSM();
+  } else {
+    resetView();
+  }
 }
 
 // ═══════════════════════════════════════════
@@ -889,13 +1006,16 @@ function setMode(m){
 // ═══════════════════════════════════════════
 container.addEventListener('mousedown',e=>{
   if(e.button!==0||e.target.closest('.pill,.chip'))return;
-  isPanning=true;panSX=e.clientX;panSY=e.clientY;panTX=tx;panTY=ty;
-  container.classList.add('panning');canvas.style.transition='none';
+  isPanning=true;panSX=e.clientX;panSY=e.clientY;
+  panTX=isSMMode?smTx:tx;panTY=isSMMode?smTy:ty;
+  container.classList.add('panning');
+  (isSMMode?smCanvas:canvas).style.transition='none';
 });
 document.addEventListener('mousemove',e=>{
   if(!isPanning)return;
-  tx=panTX+(e.clientX-panSX);ty=panTY+(e.clientY-panSY);
-  canvas.style.transform=`translate(${tx}px,${ty}px) scale(${sc})`;
+  const ntx=panTX+(e.clientX-panSX),nty=panTY+(e.clientY-panSY);
+  if(isSMMode){smTx=ntx;smTy=nty;applyTransformSM();}
+  else{tx=ntx;ty=nty;canvas.style.transform=`translate(${tx}px,${ty}px) scale(${sc})`;}
 });
 document.addEventListener('mouseup',()=>{if(isPanning){isPanning=false;container.classList.remove('panning');}});
 // Smooth zoom — accumulate delta and animate with rAF
@@ -917,6 +1037,14 @@ function smoothZoomStep(){
 }
 container.addEventListener('wheel',e=>{
   e.preventDefault();
+  if(isSMMode){
+    const f=e.deltaY<0?1.1:1/1.1;
+    const newSc=Math.max(0.05,Math.min(4,smSc*f));
+    const rect=container.getBoundingClientRect();
+    const mx=e.clientX-rect.left,my=e.clientY-rect.top;
+    smTx=mx-(mx-smTx)*newSc/smSc;smTy=my-(my-smTy)*newSc/smSc;
+    smSc=newSc;applyTransformSM();return;
+  }
   const f=e.deltaY<0?1.06:1/1.06;
   const newSc=Math.max(0.04,Math.min(3,zoomTarget.sc*f));
   const rect=container.getBoundingClientRect();
