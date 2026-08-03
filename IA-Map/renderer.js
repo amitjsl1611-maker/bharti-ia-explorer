@@ -77,10 +77,11 @@ function assignCoordinates(proposed) {
   let curX = 350;
   const SECT_GAP = 200;
 
-  allSections.forEach(sec => {
+  allSections.forEach((sec, si) => {
     const n = sec.l2 ? sec.l2.length : 0;
     const secW = n === 0 ? 200 : n * SLOT - 120;
-    sec.cx = curX + secW / 2;
+    sec.cx  = curX + secW / 2;
+    sec._secW = secW; // store for dynamic card width
 
     if (n > 0) {
       sec.l2.forEach((l2, i) => {
@@ -242,9 +243,11 @@ function buildCanvas(totalWidth, canvasH) {
   addLine(minCX, SPINE_Y, maxCX, SPINE_Y);
   addDot(START_CX, SPINE_Y);
 
-  SECTIONS.forEach(sec => {
+  SECTIONS.forEach((sec, si) => {
     const cx = sec.cx;
     const isUtil = sec.utility === true;
+    // card width fits within available section slot; min 240, max CW
+    const cardW = Math.min(CW, Math.max(240, (sec._secW || CW) + 200 - 40));
 
     addDot(cx, SPINE_Y);
     addLine(cx, SPINE_Y, cx, L1_Y);
@@ -254,8 +257,8 @@ function buildCanvas(totalWidth, canvasH) {
     const l1p = pill(sec.name, cls, cx, L1_Y, 200, 34, { section: sec.id });
     l1p.onclick = () => focusSection(sec.id);
 
-    // L1 card
-    const l1c = card(cx, L1_CARD_Y, CW, sec.desc, sec.info, sec.actions, 'l1-card');
+    // L1 card — width capped to available slot
+    const l1c = card(cx, L1_CARD_Y, cardW, sec.desc, sec.info, sec.actions, 'l1-card');
 
     if (!sec.l2 || !sec.l2.length) return;
 
@@ -292,7 +295,7 @@ function buildCanvas(totalWidth, canvasH) {
 
       // L2 pill — hidden by default, dataset matches prototype's revealL2 query
       const l2cls = isUtil ? 'pill-l2 utility' : 'pill-l2';
-      const l2p = pill(l2.name, l2cls, l2.cx, L2_Y, CW, 30, {
+      const l2p = pill(l2.name, l2cls, l2.cx, L2_Y, cardW, 30, {
         section: sec.id,
         l2name: l2.name,
         l2cx: String(l2.cx),
@@ -303,7 +306,7 @@ function buildCanvas(totalWidth, canvasH) {
 
       // L2 card — hidden by default
       addLine(l2.cx, L2_Y + 30, l2.cx, L2_CARD_Y);
-      const l2c = card(l2.cx, L2_CARD_Y, CW, l2.desc || l2.name, l2.info || [], l2.actions || []);
+      const l2c = card(l2.cx, L2_CARD_Y, cardW, l2.desc || l2.name, l2.info || [], l2.actions || []);
       l2c.dataset.l2sec = sec.id;
       l2c.dataset.level = 'l2';
       l2c.style.display = 'none'; // hidden until revealL2()
