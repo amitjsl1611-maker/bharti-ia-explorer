@@ -198,7 +198,7 @@ function pill(label, cls, cx, y, w, h, dataset = {}) {
   const p = document.createElement('div');
   p.className = 'pill ' + cls;
   p.textContent = label;
-  p.style.cssText = `left:${cx - w / 2}px;top:${y}px;width:${w}px;height:${h}px;border-radius:6px;`;
+  p.style.cssText = `left:${cx - w / 2}px;top:${y}px;width:${w}px;`;
   Object.entries(dataset).forEach(([k, v]) => p.dataset[k] = v);
   canvas.appendChild(p);
   return p;
@@ -233,13 +233,8 @@ function buildCanvas(totalWidth, canvasH) {
   const minCX = Math.min(...allCX);
   const maxCX = Math.max(...allCX);
 
-  // START pill (color: #F5B840 yellow like the prototype)
+  // START pill
   const startPill = pill(companyName, 'pill-start', START_CX, START_Y, 200, 38);
-  startPill.style.background = '#F5B840';
-  startPill.style.color = '#1A1A1A';
-  startPill.style.fontSize = '13px';
-  startPill.style.height = '38px';
-  startPill.style.borderRadius = '6px';
   startPill.onclick = () => applyStop(0);
 
   // Main spine
@@ -257,10 +252,6 @@ function buildCanvas(totalWidth, canvasH) {
     // L1 pill — dataset.section = sec.id (for highlight queries)
     const cls = isUtil ? 'pill-l1 utility' : 'pill-l1';
     const l1p = pill(sec.name, cls, cx, L1_Y, 200, 34, { section: sec.id });
-    l1p.style.background = isUtil ? '#1A3A5C' : '#3D6B35';
-    l1p.style.color = '#fff';
-    l1p.style.fontSize = '12px';
-    l1p.style.borderRadius = '6px';
     l1p.onclick = () => focusSection(sec.id);
 
     // L1 card
@@ -307,10 +298,6 @@ function buildCanvas(totalWidth, canvasH) {
         l2cx: String(l2.cx),
         level: 'l2',
       });
-      l2p.style.background = isUtil ? '#1A3050' : '#1A4040';
-      l2p.style.color = '#fff';
-      l2p.style.fontSize = '10.5px';
-      l2p.style.borderRadius = '6px';
       l2p.style.display = 'none'; // hidden until revealL2()
       l2p.onclick = e => { e.stopPropagation(); focusL2(sec.id, sec.l2.indexOf(l2)); };
 
@@ -335,10 +322,6 @@ function buildCanvas(totalWidth, canvasH) {
             l2sec: sec.id,
             level: 'l3',
           });
-          l3p.style.background = '#333';
-          l3p.style.color = '#fff';
-          l3p.style.fontSize = '10px';
-          l3p.style.borderRadius = '4px';
           l3p.style.display = 'none'; // hidden until revealL2()
         });
       }
@@ -523,7 +506,7 @@ function setupInteraction() {
   let isPanning = false, panSX, panSY, panTX, panTY;
 
   container.addEventListener('mousedown', e => {
-    if (e.button !== 0 || e.target.closest('.pill,.show-l2-btn,.sm-l2-toggle,.inav-tab,.nav-pill,.tb-nav-btn')) return;
+    if (e.button !== 0 || e.target.closest('.pill,.show-l2-btn,.sm-l2-toggle,.inav-tab,.nav-pill,.tb-nav-text')) return;
     isPanning = true;
     panSX = e.clientX; panSY = e.clientY;
     panTX = isSMMode ? smTx : tx;
