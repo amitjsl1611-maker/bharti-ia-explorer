@@ -599,10 +599,183 @@ const MERCURY_DATA = {
   rationale: 'The revamped Mercury IA consolidates overlapping product groupings into a clean Platform section, elevates Developer tooling to match Mercury\'s API-first positioning, and fixes the core navigation problem: too many things buried in the wrong parent. Trust & Security and Support move to utility nav where users expect them. Solutions are segmented by Stage — matching how Mercury\'s founder-first users think about themselves, not by corporate role titles.',
 };
 
-/* ── Quick-load: skip input screen when ?mock or ?mercury is in URL ── */
+/* ── CRISIL IA data — load with ?crisil ── */
+const CRISIL_DATA = {
+  company: {
+    name: 'CRISIL',
+    domain: 'crisil.com',
+    tagline: 'Making markets function better',
+    existing_issues: [
+      'No "What We Do" at L1 — all services buried behind business-unit sub-domains',
+      'Contact Us absent from primary nav — only appears on sub-domain navs',
+      'CRISIL AI and 1Academy buried under "Who We Are > More From CRISIL"',
+      'Investor Relations grouped under "Who We Are" — low discoverability for financial audience',
+      'Only 4 L1 nav items for a company with 5 business units and 10+ service areas',
+      '"Homepage" used as nav label for business units — CMS artifact leaking into production',
+      'Duplicate press release URLs: /press-release.html vs /newsroom/press-releases.html',
+      '/sitemap.xml returns 400 — no public sitemap, crawlability risk',
+    ],
+  },
+  proposed_ia: {
+    primary_nav: [
+      {
+        id: 'solutions',
+        name: 'SOLUTIONS',
+        utility: false,
+        desc: 'All CRISIL capabilities — navigate by the problem you need solved, not by internal business unit',
+        info: ['Ratings · Research · ESG · Risk · Data & AI · Consulting', 'Mapped to industries and geographies', 'Start from your need, not our org chart'],
+        actions: ['Explore all solutions', 'Talk to a specialist'],
+        l2: [
+          { name: 'Ratings & Credit Risk', desc: 'India\'s most trusted credit rating agency — bank loans, bonds, structured finance and more', info: ['Bank loan ratings', 'Bond and NCD ratings', 'Structured finance ratings', 'SME ratings', 'Rating methodologies and criteria'], actions: ['Get a rating', 'Check a rating', 'Download methodology'], l3: [] },
+          { name: 'Research & Analytics', desc: 'Macro, sector, company and fixed-income research powering 20,000+ professionals globally', info: ['Economic & industry research', 'Company financial research', 'Fixed income research and data', 'Customised analytics and reports'], actions: ['Browse research', 'Request custom research'], l3: [{ name: 'Economic Research' }, { name: 'Industry Research' }, { name: 'Fixed Income' }, { name: 'Custom Analytics' }] },
+          { name: 'ESG & Sustainability', desc: 'ESG ratings, assessments, transition risk and sustainability consulting for India and global markets', info: ['ESG ratings for listed companies', 'Green and social bond opinions', 'Net-zero transition risk analysis', 'BRSR and disclosure advisory', 'Sustainability scoring'], actions: ['Get ESG rated', 'Download ESG methodology', 'Talk to sustainability team'], l3: [{ name: 'ESG Ratings' }, { name: 'Green Bond Opinions' }, { name: 'BRSR Advisory' }] },
+          { name: 'Risk & Compliance', desc: 'End-to-end risk solutions — model validation, regulatory compliance and stress testing', info: ['Credit risk models and validation', 'Regulatory reporting (RBI, Basel IV)', 'Stress testing and IFRS 9', 'AML/KYC analytics', 'Model risk management'], actions: ['Talk to risk team', 'Download risk brochure'], l3: [] },
+          { name: 'Data & Technology', desc: 'Structured financial data, indices, valuations and AI-powered analytics tools', info: ['Bonds and loans data', 'Equity and mutual fund data', 'CRISIL Bond Index series', 'Instrument valuations (MF, treasury)', 'CRISIL AI platform'], actions: ['Explore data products', 'Get API access', 'Download data catalogue'], l3: [{ name: 'Bonds & Loans Data' }, { name: 'Indices' }, { name: 'Valuations' }, { name: 'CRISIL AI' }] },
+          { name: 'Consulting', desc: 'Strategy and sector consulting across infrastructure, energy, financial services and consumer markets', info: ['Urban infrastructure & transport', 'Energy, commodities & renewables', 'Mining & metals', 'Financial sector consulting', 'Consumer & retail strategy'], actions: ['Explore consulting', 'Meet the team'], l3: [{ name: 'Infrastructure' }, { name: 'Energy & Renewables' }, { name: 'Financial Services' }] },
+        ],
+      },
+      {
+        id: 'businesses',
+        name: 'BUSINESSES',
+        utility: false,
+        desc: 'Five focused business units — deep specialisation, each with its own research, data and analytical engine',
+        info: ['CRISIL Ratings · CRISIL Intelligence · CRISIL ESG · Integral IQ · Coalition Greenwich', 'All backed by S&P Global partnership and CRISIL\'s 35+ year track record', 'Combined reach: 30,000+ ratings, 1,400+ reports/year, 3,500+ global institutions'],
+        actions: ['Go to CRISIL Ratings', 'Go to Intelligence', 'Explore all businesses'],
+        l2: [
+          { name: 'CRISIL Ratings', desc: 'India\'s largest credit rating agency — 30,000+ entity ratings across every instrument class', info: ['Corporate and bank ratings', 'Structured finance and securitisation', 'Real estate and NBFC ratings', 'Municipal and infrastructure bond ratings', 'Rating criteria, methodologies and regulatory disclosures'], actions: ['Visit CRISIL Ratings', 'Submit for rating', 'Check a rating'], l3: [] },
+          { name: 'CRISIL Intelligence', desc: 'Market intelligence hub — research, consulting, data analytics, sustainability and risk under one roof', info: ['1,200+ research reports annually', 'Sector research across 80+ industries', 'Consulting engagements across 7 sectors', 'Risk solutions and model services', 'Sustainability advisory'], actions: ['Visit Intelligence', 'Browse reports', 'Talk to analyst'], l3: [] },
+          { name: 'CRISIL ESG', desc: 'Dedicated ESG ratings and sustainability analytics — a separately regulated entity', info: ['ESG ratings for listed Indian companies', 'Green and sustainable bond second-party opinions', 'ESG disclosure and BRSR advisory', 'Transition risk and net-zero analysis'], actions: ['Visit CRISIL ESG', 'Get ESG rated'], l3: [] },
+          { name: 'Integral IQ', desc: 'Fixed income data, valuations and tools for asset managers, treasuries and regulators', info: ['Bond pricing and instrument valuations', 'Fixed income analytics platform', 'Instrument-level data feeds', 'MF valuations and NAV support'], actions: ['Visit Integral IQ', 'Explore platform'], l3: [] },
+          { name: 'Coalition Greenwich', desc: 'Strategic benchmarking and market analytics for financial institutions worldwide — 3,500+ firms tracked', info: ['Voice of the Client benchmarking studies', 'Market share analytics for wholesale banking', 'Investment management and equity research insights', 'Annual research covering US, Europe and Asia'], actions: ['Visit Coalition Greenwich', 'Download Coalition research'], l3: [] },
+        ],
+      },
+      {
+        id: 'insights',
+        name: 'INSIGHTS',
+        utility: false,
+        desc: 'Research, reports, events and tools published by CRISIL — free previews and subscriber access',
+        info: ['1,400+ articles, reports and blogs published annually', 'Flagship events: CRISIL Annual Summit, India Outlook, Sector Conclaves', 'Free interactive data tools and calculators', 'Full access gated via My CRISIL login'],
+        actions: ['Browse all insights', 'Subscribe to research', 'Register for next event'],
+        l2: [
+          { name: 'Reports & Research', desc: 'Sector reports, rating commentaries, economic outlooks and capital market analysis', info: ['Annual economy and credit outlook', 'Sector reports across 80+ industries', 'Credit and fixed income reports', 'ESG and sustainability research', 'Coalition Greenwich annual studies'], actions: ['Browse reports', 'Download free sample', 'Subscribe for full access'], l3: [{ name: 'Economy & Markets' }, { name: 'Sector Research' }, { name: 'Credit & Fixed Income' }] },
+          { name: 'Articles & Blogs', desc: 'Short-form analysis from CRISIL economists, analysts and sector specialists', info: ['Macro commentary and data stories', 'Sector deep-dives and expert opinions', 'Leadership opinion pieces', 'Infographics and visual explainers'], actions: ['Read latest articles', 'Subscribe to weekly digest'], l3: [] },
+          { name: 'Events & Webinars', desc: 'Live and on-demand — roundtables, sector conclaves and the annual CRISIL summit', info: ['Upcoming events calendar', 'On-demand webinar library', 'CRISIL Annual Summit recordings', 'Industry roundtables and conclaves'], actions: ['See upcoming events', 'Watch past sessions', 'Register now'], l3: [] },
+          { name: 'Data Tools', desc: 'Free interactive financial tools — yield curve, bond calculator, inflation tracker, indices performance', info: ['Yield curve visualiser', 'Bond price and yield calculator', 'Inflation and GDP tracker', 'CRISIL Bond Indices performance dashboard'], actions: ['Open tools', 'Export data'], l3: [] },
+        ],
+      },
+      {
+        id: 'about',
+        name: 'ABOUT',
+        utility: false,
+        desc: 'CRISIL\'s story, leadership, investor relations and global footprint — established 1987, S&P Global subsidiary',
+        info: ['4,000+ employees across India, UK, US, Argentina', 'Listed on NSE and BSE', 'S&P Global subsidiary since 1996', '35+ year track record in Indian financial markets'],
+        actions: ['Read our story', 'Meet leadership', 'Visit investor relations'],
+        l2: [
+          { name: 'Who We Are', desc: 'Our purpose, values and the story of CRISIL since 1987', info: ['Our purpose and values', 'Company history and milestones', 'S&P Global relationship and group structure', 'Awards and recognitions', 'Global locations: Mumbai · London · New York · Buenos Aires'], actions: ['Read about us', 'Download company overview'], l3: [] },
+          { name: 'Leadership', desc: 'Board of Directors, Executive Management Committee and independent directors', info: ['Board of Directors', 'Executive Management Committee', 'Independent director profiles', 'Committee compositions'], actions: ['View leadership team', 'Download annual report'], l3: [] },
+          { name: 'Investor Relations', desc: 'Financial results, governance, shareholder services and regulatory disclosures for listed company', info: ['Quarterly and annual financial results', 'Annual reports archive', 'Shareholder and dividend information', 'Corporate governance documents', 'Board and committee details', 'Corporate announcements', 'Sustainability report', 'Analyst hub and disclosures (LODR Reg 46)'], actions: ['View financials', 'Download annual report', 'Contact investor relations'], l3: [{ name: 'Financials' }, { name: 'Governance' }, { name: 'Shareholder Services' }] },
+          { name: 'Newsroom', desc: 'Press releases, media kit, brand assets and media contact', info: ['Press releases (single canonical URL, no duplicates)', 'Press kit & media assets', 'Media contacts', 'CRISIL in the news coverage'], actions: ['Read latest news', 'Download press kit', 'Contact media team'], l3: [] },
+          { name: 'Foundation & CSR', desc: 'CRISIL Foundation\'s social impact work — financial literacy, rural livelihoods and urban inclusion', info: ['Mein Pragati (rural women\'s livelihoods)', 'CRISIL RE (urban infrastructure)', 'GramShakti (rural India empowerment)', 'MoneyWise CFL (financial literacy)', 'Annual impact reports'], actions: ['Visit CRISIL Foundation', 'Read impact report'], l3: [] },
+          { name: 'Careers', desc: 'Join 4,000+ professionals shaping Indian and global financial markets', info: ['Open roles across India, UK, US, Argentina', 'Life at CRISIL and employee stories', 'Learning & development — CRISIL 1Academy', 'Graduate and campus programmes', 'Diversity and inclusion commitments'], actions: ['See open roles', 'Explore life at CRISIL', 'Connect on LinkedIn'], l3: [] },
+        ],
+      },
+    ],
+    utility_nav: [
+      {
+        id: 'crisil-ai',
+        name: 'CRISIL AI',
+        utility: true,
+        desc: 'AI-powered analytics, document intelligence and workflow automation built on CRISIL\'s proprietary data',
+        info: ['Document intelligence for credit and research workflows', 'NLP-driven rating commentary analysis', 'AI-assisted financial modelling', 'Integrated with CRISIL\'s 35+ years of proprietary data assets'],
+        actions: ['Explore CRISIL AI', 'Request demo', 'Talk to AI team'],
+        l2: [],
+      },
+      {
+        id: 'academy',
+        name: '1ACADEMY',
+        utility: true,
+        desc: 'CRISIL\'s learning platform — certifications, courses and training for finance professionals',
+        info: ['Credit analysis certifications', 'Fixed income and derivatives courses', 'ESG training modules', 'Online and in-person delivery', 'Recognised by employers across BFSI sector'],
+        actions: ['Browse courses', 'Enrol now', 'View certifications'],
+        l2: [],
+      },
+      {
+        id: 'contact',
+        name: 'CONTACT',
+        utility: true,
+        desc: 'Get in touch with the right CRISIL team — sales, ratings, research, media or investor queries',
+        info: ['Mumbai HQ: CRISIL House, Central Avenue, Powai', 'London and New York offices', 'Business-specific contact forms', 'Investor relations and media contacts'],
+        actions: ['Contact sales', 'Contact ratings team', 'Find nearest office'],
+        l2: [],
+      },
+    ],
+  },
+  competitors: [
+    {
+      name: 'ICRA',
+      domain: 'icra.in',
+      type: 'local',
+      primary_nav_count: 6,
+      has_newsroom: true,
+      has_investors: true,
+      has_sustainability: false,
+      has_careers: true,
+      portfolio_organization: 'function',
+      ia_structure: 'Ratings (Bank Loan · Issuer · Structured Finance · Municipal) · Research (Industry · Economy · Thought Leadership) · Risk Solutions · Products & Services · About · Investor Relations',
+      unique_adopted: 'Ratings as a surfaced capability — adopted under Solutions > Ratings & Credit Risk; Research as a distinct section — merged into Insights; Investor Relations as a visible page — adopted under About > Investor Relations',
+      unique_not_adopted: '"Risk Solutions" as a standalone L1; "Products & Services" as a separate data-tools nav item',
+      notable_pattern: 'ICRA (Moody\'s subsidiary) separates Ratings and Research into distinct L1 items. Works for institutional buyers who distinguish between a rating search and a research report search. CRISIL\'s broader audience makes capability-first Solutions more scalable — but a power-user shortcut to Ratings search could be added to utility nav later.',
+    },
+    {
+      name: 'CARE Ratings',
+      domain: 'careratings.com',
+      type: 'local',
+      primary_nav_count: 7,
+      has_newsroom: true,
+      has_investors: true,
+      has_sustainability: true,
+      has_careers: true,
+      portfolio_organization: 'function',
+      ia_structure: 'Ratings (Corporate · Bank Loan · SME · Structured · Municipal · Infrastructure) · Research (Economy · Industry · Credit · Fixed Income) · ESG · Knowledge Centre · Investor Relations · About · Careers',
+      unique_adopted: 'ESG as a visible standalone section — adopted as Solutions > ESG & Sustainability and as a full Business unit (CRISIL ESG); Knowledge Centre content hub — adopted as "Insights" L1; Contact Us in primary nav — adopted as utility nav item',
+      unique_not_adopted: 'Dedicated SME ratings section in nav; "Pay Online" utility link for rating fees; Careers as a standalone L1',
+      notable_pattern: 'CARE Ratings surfaces a Knowledge Centre and ESG prominently — both adopted. "Pay Online" for rating fees is a smart transactional shortcut for India\'s smaller-issuer market, where fees are paid directly. Not adopted for CRISIL because CRISIL\'s fees flow through relationship managers and key accounts, not a self-serve payment flow.',
+    },
+    {
+      name: 'India Ratings',
+      domain: 'indiaratings.co.in',
+      type: 'local',
+      primary_nav_count: 5,
+      has_newsroom: true,
+      has_investors: false,
+      has_sustainability: true,
+      has_careers: true,
+      portfolio_organization: 'function',
+      ia_structure: 'Ratings (Corporate · Structured Finance · Public Finance · Banks & FIs) · Research (Sector Outlooks · Special Reports · Rating Criteria) · Sustainability · Regulatory & Criteria · About',
+      unique_adopted: 'Regulatory & Criteria as a discoverable path to methodologies — adopted as sub-items within Solutions > Ratings & Credit Risk; Sector Outlooks as a named content type — adopted in Insights > Reports & Research',
+      unique_not_adopted: '"Regulatory & Criteria" as a standalone L1 nav section; Public Finance ratings as a distinct L2; Fitch group branding in nav',
+      notable_pattern: 'India Ratings (Fitch subsidiary) surfaces "Regulatory & Criteria" as an L1 — a smart transparency signal for institutional buyers who start from the methodology. Not adopted at L1 for CRISIL because methodologies are contextually linked within each solution page. Worth revisiting if CRISIL wants to compete explicitly on rating transparency against SEBI requirements.',
+    },
+  ],
+  best_practices_applied: [
+    '"What We Do / Solutions" added at L1 — current site has zero product/capability navigation at the top level',
+    'Contact Us surfaced in utility nav — was completely missing from crisil.com primary nav',
+    'Investor Relations moved to About > L2 — was buried under Who We Are > More From CRISIL',
+    'CRISIL AI elevated to utility nav — was 3 levels deep under Who We Are > More From CRISIL',
+    '1Academy elevated to utility nav — was buried alongside AI and Foundation with no prominence',
+    'Businesses section created at L1 for users who know which unit they need (brand-aware audience)',
+    'Insights hub replaces "What We Think" — Events, Tools, Articles and Research under one roof',
+    'Foundation and CSR consolidated under About — now discoverable alongside company information',
+    'Duplicate press release URLs consolidated to a single canonical Newsroom path',
+    'Careers moved under About as L2 — was a standalone L1 orphan with no contextual parent',
+  ],
+  rationale: 'CRISIL\'s current IA is an org-chart navigation — visitors must already know which internal business unit answers their question. The revamp introduces a capability-first Solutions layer so buyers navigate by need (ratings, research, ESG, risk, data, consulting) rather than by CRISIL\'s internal structure. This is especially critical as CRISIL competes with S&P Global and Moody\'s Analytics internationally, where need-based navigation is table stakes for enterprise B2B SaaS.',
+};
+
+/* ── Quick-load: skip input screen when ?mock, ?mercury or ?crisil is in URL ── */
 (function () {
   const p = new URLSearchParams(window.location.search);
-  const data = p.has('mercury') ? MERCURY_DATA : p.has('mock') ? MOCK_DATA : null;
+  const data = p.has('crisil') ? CRISIL_DATA : p.has('mercury') ? MERCURY_DATA : p.has('mock') ? MOCK_DATA : null;
   if (!data) return;
   document.getElementById('state-input').classList.remove('active');
   setTimeout(() => renderResult(data), 50);
