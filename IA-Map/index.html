@@ -152,7 +152,7 @@
 
   <!-- TOUR BAR -->
   <div id="tourbar">
-    <button class="tb-nav-btn" id="btn-prev" onclick="navigate(-1)">
+    <button class="tb-nav-btn" id="btn-prev" onclick="prevStop()">
       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
     </button>
     <div id="tour-content">
@@ -163,7 +163,7 @@
     </div>
     <div class="tb-nav-group">
       <span id="tour-counter">—</span>
-      <button class="tb-nav-btn" id="btn-next" onclick="navigate(1)">
+      <button class="tb-nav-btn" id="btn-next" onclick="nextStop()">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
       </button>
     </div>
@@ -197,6 +197,12 @@
   <div id="rationale-bar" class="rationale-bar">
     <div id="rationale-text"></div>
   </div>
+
+  <!-- TOAST -->
+  <div id="ia-toast" class="ia-toast"></div>
+
+  <!-- BACK TO SITEMAP -->
+  <div id="back-to-sm" class="back-to-sm" style="display:none;" onclick="backToSitemap()">← Back to Sitemap</div>
 
 </div>
 

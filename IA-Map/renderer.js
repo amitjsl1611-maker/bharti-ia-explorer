@@ -1,68 +1,69 @@
 /* ══════════════════════════════════════════════
    renderer.js — IA Map canvas renderer
-   Accepts the AI-generated JSON and draws the
-   full interactive IA + Sitemap explorer.
+   Faithfully ports bharti-ia-prototype.html's
+   exact rendering patterns to a data-driven API.
 ══════════════════════════════════════════════ */
 
 'use strict';
 
-/* ── COORDINATE CONSTANTS (match prototype) ── */
-const CW        = 440;   // Card width
-const SLOT      = 560;   // Horizontal slot per L2
-const L1_Y      = 310;   // L1 pill top Y
-const L1_CARD_Y = 390;   // L1 card top Y
-const L2_SY     = 830;   // L2 horizontal spine Y
-const L2_Y      = 870;   // L2 pill top Y
-const L2_CARD_Y = 944;   // L2 card top Y
-const L3_SY     = 1344;  // L3 horizontal spine Y
-const L3_Y      = 1384;  // L3 pill top Y
-const L3_CARD_Y = 1458;  // L3 card top Y
-const SPINE_Y   = 258;   // Main spine Y
-const START_Y   = 145;   // START pill top Y
+/* ── IA COORDINATE CONSTANTS ── */
+const CW        = 440;
+const SLOT      = 560;
+const L1_Y      = 310;
+const L1_CARD_Y = 390;
+const L2_SY     = 830;
+const L2_Y      = 870;
+const L2_CARD_Y = 944;
+const L3_SY     = 1344;
+const L3_Y      = 1384;
+const SPINE_Y   = 258;
+const START_Y   = 145;
+const L1_FOCUS_CY = 545;
+const L2_FOCUS_CY = L2_Y + 140; // ~1010
 
-/* ── COLOR SYSTEM ── */
-const COL = {
-  start:      '#F5B840',
-  l1Primary:  '#3D6B35',
-  l1Utility:  '#1A3A5C',
-  l2Primary:  '#1A4040',
-  l2Utility:  '#1A3050',
-  l3:         '#333333',
-  connector:  '#8B5FD4',
-  infoBg:     '#E6F4F4', infoText:   '#1A4040',
-  actionBg:   '#FFF8E8', actionText: '#7A5500',
-  cardBg:     '#ffffff', cardBorder: '#e0e0e0',
-  textWhite:  '#ffffff', textDark:   '#1A1A1A',
-};
+/* ── SITEMAP CONSTANTS ── */
+const SM_SPINE_Y  = 120;
+const SM_L1_Y     = 148;
+const SM_L1_PW    = 180;
+const SM_L1_PH    = 26;
+const SM_L2_STY   = 220;
+const SM_L2_ROW_H = 50;
+const SM_L2_PW    = 190;
+const SM_L2_PH    = 24;
+const SM_L1_Y_REF = 148;
+const SM_SLOT     = 340; // horizontal spacing between L1 sections
+
+/* ── SVG TARGET (prototype pattern) ── */
+let svgTarget = null; // null = root svg; <g> when building L2 connectors
 
 /* ── STATE ── */
-let SECTIONS = [];        // flat array of all sections after assignCoordinates
-let mainStops = [];       // tour stops
-let currentStop = 0;
-let currentL2idx = -1;
+let SECTIONS      = [];
+let mainStops     = [];
+let currentStop   = 0;
+let currentL2idx  = -1;
 let currentSectionId = null;
-let l2Opened = new Set();
-let highlighted = new Set();
-let isSMMode = false;
+let l2Opened      = new Set();
+let isSMMode      = false;
+let smBuilt       = false;
+let smSecIdx      = 0;
+let SM_SEC_CXS    = [];
+let smL2Open      = new Set();
+let companyName   = 'SITE';
 
 // IA camera
 let tx = 0, ty = 0, sc = 0.065;
 let zoomTarget = { tx: 0, ty: 0, sc: 0.065 };
 let zoomRaf = null;
+let zoomEase = 0.16;
 
 // SM camera
 let smTx = 0, smTy = 0, smSc = 0.3;
 let smZoomTarget = { tx: 0, ty: 0, sc: 0.3 };
 let smZoomRaf = null;
-let smSecIdx = 0;
-let smBuilt = false;
-
-// SM layout constants
-const SM_L1_Y_REF = 220;
-let SM_SEC_CXS = [];
 
 /* ── DOM REFS ── */
 let container, canvas, svg, smCanvas, smSvg;
+let START_CX; // global IA canvas start x
 
 /* ═══════════════════════════════════════════
    COORDINATE ASSIGNMENT
@@ -95,8 +96,7 @@ function assignCoordinates(proposed) {
     curX += secW + SECT_GAP;
   });
 
-  const totalWidth = curX + 200;
-  return { sections: allSections, totalWidth };
+  return { sections: allSections, totalWidth: curX + 200 };
 }
 
 /* ═══════════════════════════════════════════
@@ -109,241 +109,243 @@ function buildRenderer(iaData) {
   smCanvas  = document.getElementById('sm-canvas');
   smSvg     = document.getElementById('sm-svg');
 
-  // Assign coordinates
+  companyName = iaData.company?.name || 'SITE';
+
+  // Reset state
+  smBuilt = false;
+  smL2Open = new Set();
+  l2Opened = new Set();
+  currentStop = 0;
+  currentL2idx = -1;
+  currentSectionId = null;
+  smSecIdx = 0;
+
   const { sections, totalWidth } = assignCoordinates(iaData.proposed_ia);
   SECTIONS = sections;
 
-  // Canvas size
-  const canvasH = 2000;
+  const canvasH = 2200;
   canvas.style.width  = totalWidth + 'px';
   canvas.style.height = canvasH + 'px';
   svg.setAttribute('width',  totalWidth);
   svg.setAttribute('height', canvasH);
+  svg.style.cssText = 'position:absolute;top:0;left:0;overflow:visible;pointer-events:none;';
 
-  // Build tour stops
-  const START_CX = totalWidth / 2;
+  // IA START position — centered on canvas
+  START_CX = totalWidth / 2;
+
+  // Build tour stops (includes data: sec reference like the prototype)
   mainStops = [
-    { id: 'overview', name: 'Overview', desc: `${SECTIONS.length} sections · Full architecture`, cx: START_CX, cy: 600, sc: 0.065, l2: [] },
+    {
+      id: 'overview',
+      name: 'Overview',
+      desc: `${SECTIONS.length} sections · Full proposed architecture`,
+      cx: START_CX,
+      cy: 600,
+      sc: 0.065,
+      data: null,
+    },
     ...SECTIONS.map(s => ({
       id: s.id || s.name.toLowerCase().replace(/\s+/g, '-'),
       name: s.name,
       desc: s.desc || '',
       cx: s.cx,
-      cy: L1_CARD_Y + 200,
+      cy: 600,
       sc: sectionScale(s),
-      l2: s.l2 || [],
+      data: s,
     })),
   ];
 
-  // Draw
-  drawCanvas(totalWidth, canvasH, START_CX);
+  buildCanvas(totalWidth, canvasH);
   buildIslandNav();
-  setupCamera(totalWidth, START_CX);
+  setupCamera(totalWidth);
   setupInteraction();
-  updateBar(mainStops[0], -1);
+  updateBar(mainStops[0], null);
   updateNavButtons();
 
-  // Build competitors panel
   if (iaData.competitors) buildCompetitorsPanel(iaData);
   if (iaData.rationale)   showRationale(iaData.rationale);
 }
 
 /* ═══════════════════════════════════════════
-   CANVAS DRAWING
+   SVG HELPERS (route via svgTarget)
 ═══════════════════════════════════════════ */
-function drawCanvas(totalWidth, canvasH, START_CX) {
+function addLine(x1, y1, x2, y2) {
+  const l = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+  l.setAttribute('x1', x1); l.setAttribute('y1', y1);
+  l.setAttribute('x2', x2); l.setAttribute('y2', y2);
+  l.setAttribute('stroke', '#8B5FD4');
+  l.setAttribute('stroke-width', '2');
+  l.setAttribute('stroke-linecap', 'round');
+  (svgTarget || svg).appendChild(l);
+  return l;
+}
+
+function addDot(cx, cy) {
+  const c = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+  c.setAttribute('cx', cx); c.setAttribute('cy', cy);
+  c.setAttribute('r', '4'); c.setAttribute('fill', '#8B5FD4');
+  (svgTarget || svg).appendChild(c);
+}
+
+function svgG(attrs) {
+  const g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+  Object.entries(attrs).forEach(([k, v]) => g.setAttribute(k, v));
+  return g;
+}
+
+/* ── Pill helper (left = cx - w/2, matching prototype) ── */
+function pill(label, cls, cx, y, w, h, dataset = {}) {
+  const p = document.createElement('div');
+  p.className = 'pill ' + cls;
+  p.textContent = label;
+  p.style.cssText = `left:${cx - w / 2}px;top:${y}px;width:${w}px;height:${h}px;border-radius:6px;`;
+  Object.entries(dataset).forEach(([k, v]) => p.dataset[k] = v);
+  canvas.appendChild(p);
+  return p;
+}
+
+/* ── Card helper (cx - w/2) ── */
+function card(cx, y, w, desc, info, actions, extraClass) {
+  const c = document.createElement('div');
+  c.className = 'card ia-el' + (extraClass ? ' ' + extraClass : '');
+  c.style.cssText = `left:${cx - w / 2}px;top:${y}px;width:${w}px;`;
+  let h = `<div class="card-desc">${desc || ''}</div>`;
+  h += `<div class="band band-i">INFORMATION</div>`;
+  (info || []).forEach(i => h += `<div class="bullet">– ${i}</div>`);
+  h += `<div class="band band-a">ACTIONS</div>`;
+  (actions || []).forEach(a => h += `<div class="bullet">→ ${a}</div>`);
+  c.innerHTML = h;
+  canvas.appendChild(c);
+  return c;
+}
+
+/* ═══════════════════════════════════════════
+   CANVAS DRAWING (exact prototype pattern)
+═══════════════════════════════════════════ */
+function buildCanvas(totalWidth, canvasH) {
+  // Clear and re-append svg
   canvas.innerHTML = '';
   svg.innerHTML = '';
-  // Re-append svg
   canvas.appendChild(svg);
+  svgTarget = null;
 
-  const allL1CXs = SECTIONS.map(s => s.cx);
-  const minCX = Math.min(...allL1CXs);
-  const maxCX = Math.max(...allL1CXs);
+  const allCX = SECTIONS.map(s => s.cx);
+  const minCX = Math.min(...allCX);
+  const maxCX = Math.max(...allCX);
 
-  // ── START pill ──
-  addPill(canvas, {
-    x: START_CX - 100, y: START_Y, w: 200, h: 38, r: 6,
-    bg: COL.start, color: COL.textDark,
-    text: 'START', fontSize: 12,
-    onclick: () => applyStop(0),
-  });
+  // START pill (color: #F5B840 yellow like the prototype)
+  const startPill = pill(companyName, 'pill-start', START_CX, START_Y, 200, 38);
+  startPill.style.background = '#F5B840';
+  startPill.style.color = '#1A1A1A';
+  startPill.style.fontSize = '13px';
+  startPill.style.height = '38px';
+  startPill.style.borderRadius = '6px';
+  startPill.onclick = () => applyStop(0);
 
-  // ── Main spine ──
-  addSvgLine(svg, START_CX, START_Y + 38, START_CX, SPINE_Y);
-  addSvgLine(svg, minCX, SPINE_Y, maxCX, SPINE_Y);
+  // Main spine
+  addLine(START_CX, START_Y + 38, START_CX, SPINE_Y);
+  addLine(minCX, SPINE_Y, maxCX, SPINE_Y);
+  addDot(START_CX, SPINE_Y);
 
-  // ── Sections ──
-  SECTIONS.forEach((sec, idx) => {
+  SECTIONS.forEach(sec => {
     const cx = sec.cx;
     const isUtil = sec.utility === true;
-    const l1Color = isUtil ? COL.l1Utility : COL.l1Primary;
-    const stopIdx = idx + 1;
 
-    // spine dot + vertical drop
-    addSvgDot(svg, cx, SPINE_Y);
-    addSvgLine(svg, cx, SPINE_Y, cx, L1_Y);
+    addDot(cx, SPINE_Y);
+    addLine(cx, SPINE_Y, cx, L1_Y);
 
-    // L1 pill
-    addPill(canvas, {
-      x: cx - 100, y: L1_Y, w: 200, h: 34, r: 6,
-      bg: l1Color, color: COL.textWhite,
-      text: sec.name, fontSize: 10,
-      id: `l1-pill-${sec.id || idx}`,
-      classes: 'pill',
-      onclick: () => { currentStop = stopIdx; applyStop(stopIdx); },
-    });
+    // L1 pill — dataset.section = sec.id (for highlight queries)
+    const cls = isUtil ? 'pill-l1 utility' : 'pill-l1';
+    const l1p = pill(sec.name, cls, cx, L1_Y, 200, 34, { section: sec.id });
+    l1p.style.background = isUtil ? '#1A3A5C' : '#3D6B35';
+    l1p.style.color = '#fff';
+    l1p.style.fontSize = '12px';
+    l1p.style.borderRadius = '6px';
+    l1p.onclick = () => focusSection(sec.id);
 
     // L1 card
-    addCard(canvas, {
-      x: cx - CW / 2, y: L1_CARD_Y, w: CW, h: 200,
-      desc: sec.desc || '',
-      info: sec.info || [],
-      actions: sec.actions || [],
-      classes: 'card ia-el',
-      id: `l1-card-${sec.id || idx}`,
+    const l1c = card(cx, L1_CARD_Y, CW, sec.desc, sec.info, sec.actions, 'l1-card');
+
+    if (!sec.l2 || !sec.l2.length) return;
+
+    // CTA button — starts without .visible (hidden via CSS)
+    const ctaBtn = document.createElement('div');
+    ctaBtn.className = 'show-l2-btn';
+    ctaBtn.dataset.l2sec = sec.id;
+    ctaBtn.style.cssText = `left:${cx}px;top:670px`;
+    ctaBtn.innerHTML = `
+      <div class="show-l2-rings">
+        <div class="ping-ring"></div><div class="ping-ring"></div><div class="ping-ring"></div>
+        <div class="show-l2-dot"></div>
+      </div>
+      <div class="show-l2-label">Show Level 2 info ↓</div>`;
+    ctaBtn.onclick = () => revealL2(sec.id);
+    canvas.appendChild(ctaBtn);
+
+    // L2 SVG group — hidden by default (prototype pattern)
+    const l2g = svgG({ 'class': 'l2-svg-group', 'data-l2sec': sec.id });
+    l2g.style.display = 'none';
+    svg.appendChild(l2g);
+    svgTarget = l2g; // all subsequent addLine/addDot go into this group
+
+    // L2 spread connectors
+    const l2cxs = sec.l2.map(l => l.cx);
+    const l2L = Math.min(...l2cxs), l2R = Math.max(...l2cxs);
+    addLine(cx, L1_Y + 34, cx, L2_SY);
+    addDot(cx, L2_SY);
+    if (l2L !== l2R) addLine(l2L, L2_SY, l2R, L2_SY);
+
+    sec.l2.forEach(l2 => {
+      addDot(l2.cx, L2_SY);
+      addLine(l2.cx, L2_SY, l2.cx, L2_Y);
+
+      // L2 pill — hidden by default, dataset matches prototype's revealL2 query
+      const l2cls = isUtil ? 'pill-l2 utility' : 'pill-l2';
+      const l2p = pill(l2.name, l2cls, l2.cx, L2_Y, CW, 30, {
+        section: sec.id,
+        l2name: l2.name,
+        l2cx: String(l2.cx),
+        level: 'l2',
+      });
+      l2p.style.background = isUtil ? '#1A3050' : '#1A4040';
+      l2p.style.color = '#fff';
+      l2p.style.fontSize = '10.5px';
+      l2p.style.borderRadius = '6px';
+      l2p.style.display = 'none'; // hidden until revealL2()
+      l2p.onclick = e => { e.stopPropagation(); focusL2(sec.id, sec.l2.indexOf(l2)); };
+
+      // L2 card — hidden by default
+      addLine(l2.cx, L2_Y + 30, l2.cx, L2_CARD_Y);
+      const l2c = card(l2.cx, L2_CARD_Y, CW, l2.desc || l2.name, l2.info || [], l2.actions || []);
+      l2c.dataset.l2sec = sec.id;
+      l2c.dataset.level = 'l2';
+      l2c.style.display = 'none'; // hidden until revealL2()
+
+      // L3 pages
+      if (l2.l3 && l2.l3.length) {
+        const l3cxs = l2.l3.map(p => p.cx);
+        const l3L = Math.min(...l3cxs), l3R = Math.max(...l3cxs);
+        addLine(l2.cx, L2_CARD_Y + 280, l2.cx, L3_SY);
+        addDot(l2.cx, L3_SY);
+        if (l3L !== l3R) addLine(l3L, L3_SY, l3R, L3_SY);
+        l2.l3.forEach(l3 => {
+          addDot(l3.cx, L3_SY);
+          addLine(l3.cx, L3_SY, l3.cx, L3_Y);
+          const l3p = pill(l3.name, 'pill-l3', l3.cx, L3_Y, CW - 30, 26, {
+            l2sec: sec.id,
+            level: 'l3',
+          });
+          l3p.style.background = '#333';
+          l3p.style.color = '#fff';
+          l3p.style.fontSize = '10px';
+          l3p.style.borderRadius = '4px';
+          l3p.style.display = 'none'; // hidden until revealL2()
+        });
+      }
     });
 
-    // show-L2 button (IA mode)
-    if (sec.l2 && sec.l2.length) {
-      addShowL2Btn(canvas, cx, L1_CARD_Y + 210, sec.id || `sec-${idx}`, sec.l2.length);
-
-      // L2 spine
-      const l2Cxs = sec.l2.map(l => l.cx);
-      const minL2 = Math.min(...l2Cxs);
-      const maxL2 = Math.max(...l2Cxs);
-      addSvgLine(svg, cx, L1_Y + 34, cx, L2_SY, 'ia-el');
-      addSvgLine(svg, minL2, L2_SY, maxL2, L2_SY, 'ia-el');
-
-      sec.l2.forEach((l2, l2i) => {
-        const l2cx = l2.cx;
-        const secId = sec.id || `sec-${idx}`;
-
-        addSvgDot(svg, l2cx, L2_SY, 'ia-el');
-        addSvgLine(svg, l2cx, L2_SY, l2cx, L2_Y, 'ia-el');
-
-        // L2 pill
-        addPill(canvas, {
-          x: l2cx - CW / 2, y: L2_Y, w: CW, h: 30, r: 6,
-          bg: isUtil ? COL.l2Utility : COL.l2Primary, color: COL.textWhite,
-          text: l2.name, fontSize: 10,
-          id: `l2-pill-${secId}-${l2i}`,
-          classes: 'pill ia-el',
-          'data-secid': secId, 'data-l2i': l2i,
-          onclick: () => jumpToL2(stopIdx - 1, l2i),
-        });
-
-        // L2→card line + card
-        addSvgLine(svg, l2cx, L2_Y + 30, l2cx, L2_CARD_Y, 'ia-el');
-        addCard(canvas, {
-          x: l2cx - CW / 2, y: L2_CARD_Y, w: CW, h: 220,
-          desc: l2.desc || '',
-          info: l2.info || [],
-          actions: l2.actions || [],
-          classes: 'card ia-el',
-          id: `l2-card-${secId}-${l2i}`,
-        });
-
-        // L3 pages
-        if (l2.l3 && l2.l3.length) {
-          const l3Cxs = l2.l3.map(p => p.cx);
-          const minL3 = Math.min(...l3Cxs);
-          const maxL3 = Math.max(...l3Cxs);
-          addSvgLine(svg, l2cx, L2_CARD_Y + 220, l2cx, L3_SY, 'ia-el');
-          addSvgLine(svg, minL3, L3_SY, maxL3, L3_SY, 'ia-el');
-
-          l2.l3.forEach((l3, l3i) => {
-            addSvgDot(svg, l3.cx, L3_SY, 'ia-el');
-            addSvgLine(svg, l3.cx, L3_SY, l3.cx, L3_Y, 'ia-el');
-            addPill(canvas, {
-              x: l3.cx - 205, y: L3_Y, w: 410, h: 26, r: 4,
-              bg: COL.l3, color: COL.textWhite,
-              text: l3.name, fontSize: 9,
-              classes: 'pill ia-el',
-            });
-          });
-        }
-      });
-    }
+    svgTarget = null; // back to root svg
   });
-}
-
-/* ── SVG helpers ── */
-function addSvgLine(svg, x1, y1, x2, y2, cls) {
-  const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
-  line.setAttribute('x1', x1); line.setAttribute('y1', y1);
-  line.setAttribute('x2', x2); line.setAttribute('y2', y2);
-  line.setAttribute('stroke', COL.connector);
-  line.setAttribute('stroke-width', '2');
-  if (cls) line.classList.add(cls);
-  svg.appendChild(line);
-}
-function addSvgDot(svg, cx, cy, cls) {
-  const c = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
-  c.setAttribute('cx', cx); c.setAttribute('cy', cy); c.setAttribute('r', '4');
-  c.setAttribute('fill', COL.connector);
-  if (cls) c.classList.add(cls);
-  svg.appendChild(c);
-}
-
-/* ── Pill helper ── */
-function addPill(parent, opts) {
-  const el = document.createElement('div');
-  el.className = opts.classes || 'pill';
-  if (opts.id) el.id = opts.id;
-  Object.entries(opts).forEach(([k, v]) => {
-    if (k.startsWith('data-')) el.setAttribute(k, v);
-  });
-  el.style.cssText = `
-    left:${opts.x}px;top:${opts.y}px;
-    width:${opts.w}px;height:${opts.h}px;
-    border-radius:${opts.r}px;
-    background:${opts.bg};color:${opts.color};
-    font-size:${opts.fontSize || 11}px;
-  `;
-  el.textContent = opts.text;
-  if (opts.onclick) el.addEventListener('click', opts.onclick);
-  parent.appendChild(el);
-  return el;
-}
-
-/* ── Card helper ── */
-function addCard(parent, opts) {
-  const el = document.createElement('div');
-  el.className = opts.classes || 'card';
-  if (opts.id) el.id = opts.id;
-  el.style.cssText = `left:${opts.x}px;top:${opts.y}px;width:${opts.w}px;`;
-
-  let html = '';
-  if (opts.desc) html += `<div class="card-desc">${opts.desc}</div>`;
-  if (opts.info && opts.info.length) {
-    html += `<div class="band band-i">Information</div>`;
-    opts.info.forEach(b => { html += `<div class="bullet">– ${b}</div>`; });
-  }
-  if (opts.actions && opts.actions.length) {
-    html += `<div class="band band-a">Actions</div>`;
-    opts.actions.forEach(b => { html += `<div class="bullet">→ ${b}</div>`; });
-  }
-  el.innerHTML = html;
-  parent.appendChild(el);
-  return el;
-}
-
-/* ── Show-L2 button ── */
-function addShowL2Btn(parent, cx, y, secId, count) {
-  const el = document.createElement('div');
-  el.className = 'show-l2-btn ia-el visible';
-  el.style.left = cx + 'px';
-  el.style.top  = y + 'px';
-  el.dataset.secid = secId;
-  el.innerHTML = `
-    <div class="show-l2-rings">
-      <div class="ping-ring"></div><div class="ping-ring"></div><div class="ping-ring"></div>
-      <div class="show-l2-dot"></div>
-    </div>
-    <div class="show-l2-label">+ Show ${count} pages</div>`;
-  el.addEventListener('click', () => revealL2(secId));
-  parent.appendChild(el);
 }
 
 /* ═══════════════════════════════════════════
@@ -352,33 +354,46 @@ function addShowL2Btn(parent, cx, y, secId, count) {
 function buildIslandNav() {
   const nav = document.getElementById('island-nav');
   nav.innerHTML = '';
-  SECTIONS.forEach((sec, idx) => {
+  nav.style.display = 'flex';
+  document.body.classList.add('has-inav');
+  SECTIONS.forEach((sec, i) => {
+    if (i > 0) {
+      const sep = document.createElement('div');
+      sep.className = 'inav-sep';
+      nav.appendChild(sep);
+    }
     const btn = document.createElement('button');
-    btn.className = 'nav-pill' + (sec.utility ? ' utility' : '');
-    btn.dataset.secid = sec.id || `sec-${idx}`;
-    const count = sec.l2 ? sec.l2.length : 0;
-    btn.innerHTML = sec.name + (count ? `<span class="nav-pill-count">${count}</span>` : '');
-    btn.addEventListener('click', () => {
-      const stopIdx = idx + 1;
-      currentStop = stopIdx;
-      applyStop(stopIdx);
-    });
+    btn.className = 'inav-tab' + (sec.utility ? ' utility' : '');
+    btn.dataset.secid = sec.id;
+    const label = sec.name.split(' ').map(w => w[0] + w.slice(1).toLowerCase()).join(' ');
+    let html = label;
+    if (sec.l2 && sec.l2.length) html += ` <span class="inav-count">${sec.l2.length}</span>`;
+    btn.innerHTML = html;
+    btn.onclick = () => focusSection(sec.id);
     nav.appendChild(btn);
   });
+  // "All" tab resets to overview
+  const sep = document.createElement('div'); sep.className = 'inav-sep'; nav.appendChild(sep);
+  const allBtn = document.createElement('button');
+  allBtn.className = 'inav-tab'; allBtn.dataset.secid = '__all__';
+  allBtn.textContent = 'All';
+  allBtn.onclick = () => resetView();
+  nav.appendChild(allBtn);
 }
 
 function syncIslandNav(secId) {
-  document.querySelectorAll('.nav-pill').forEach(p => {
-    p.classList.toggle('active', p.dataset.secid === secId);
+  document.querySelectorAll('.inav-tab').forEach(btn => {
+    const isAll = btn.dataset.secid === '__all__';
+    btn.classList.toggle('active', isAll ? !secId : btn.dataset.secid === secId);
   });
 }
 
 /* ═══════════════════════════════════════════
    CAMERA
 ═══════════════════════════════════════════ */
-function setupCamera(totalWidth, START_CX) {
-  const vpw = container.clientWidth;
-  const vph = container.clientHeight;
+function setupCamera(totalWidth) {
+  const vpw = container.clientWidth || 1280;
+  const vph = container.clientHeight || 600;
   sc = Math.min(0.065, vpw / totalWidth * 0.9);
   tx = vpw / 2 - START_CX * sc;
   ty = vph / 2 - 600 * sc;
@@ -388,372 +403,38 @@ function setupCamera(totalWidth, START_CX) {
 
 function applyTransform(animated) {
   if (animated) {
-    canvas.style.transition = 'transform 700ms cubic-bezier(0.4,0,0.2,1)';
-    setTimeout(() => canvas.style.transition = 'none', 760);
+    canvas.style.transition = 'transform .75s cubic-bezier(0.4,0,0.2,1)';
+    setTimeout(() => canvas.style.transition = 'none', 800);
   } else {
     canvas.style.transition = 'none';
   }
   canvas.style.transform = `translate(${tx}px,${ty}px) scale(${sc})`;
+  const zl = document.getElementById('zoom-label');
+  if (zl) zl.textContent = Math.round(sc * 100) + '%';
   updateMinimap();
 }
 
+function applyTransformSM() {
+  smCanvas.style.transform = `translate(${smTx}px,${smTy}px) scale(${smSc})`;
+  const zl = document.getElementById('zoom-label');
+  if (zl) zl.textContent = Math.round(smSc * 100) + '%';
+}
+
 function smoothZoomStep() {
-  const ease = 0.16;
-  const dsc = zoomTarget.sc - sc;
-  const dtx = zoomTarget.tx - tx;
-  const dty = zoomTarget.ty - ty;
-  if (Math.abs(dsc) < 0.0005 && Math.abs(dtx) < 0.3 && Math.abs(dty) < 0.3) {
+  const ease = zoomEase;
+  const dsc = zoomTarget.sc - sc, dtx = zoomTarget.tx - tx, dty = zoomTarget.ty - ty;
+  if (Math.abs(dsc) < 0.0002 && Math.abs(dtx) < 0.15 && Math.abs(dty) < 0.15) {
     sc = zoomTarget.sc; tx = zoomTarget.tx; ty = zoomTarget.ty;
-    applyTransform(false); zoomRaf = null; return;
+    applyTransform(false); zoomRaf = null; zoomEase = 0.12; return;
   }
   sc += dsc * ease; tx += dtx * ease; ty += dty * ease;
   applyTransform(false);
   zoomRaf = requestAnimationFrame(smoothZoomStep);
 }
 
-function flyTo(cx, cy, targetSc) {
-  const vpw = container.clientWidth, vph = container.clientHeight;
-  zoomTarget.tx = vpw / 2 - cx * targetSc;
-  zoomTarget.ty = vph / 2 - cy * targetSc;
-  zoomTarget.sc = targetSc;
-  if (zoomRaf) { cancelAnimationFrame(zoomRaf); zoomRaf = null; }
-  zoomRaf = requestAnimationFrame(smoothZoomStep);
-}
-
-function sectionScale(sec) {
-  if (!sec.l2 || !sec.l2.length) return 0.75;
-  const cxs = sec.l2.map(l => l.cx);
-  const span = (Math.max(...cxs) - Math.min(...cxs)) + CW + 100;
-  return Math.min(0.65, Math.max(0.18, (container.clientWidth * 0.85) / span));
-}
-
-/* ── Zoom controls ── */
-function zoomIn()  { const f = 1.25; adjustZoom(f); }
-function zoomOut() { const f = 0.8;  adjustZoom(f); }
-function adjustZoom(factor) {
-  const vpw = container.clientWidth, vph = container.clientHeight;
-  const cx = vpw / 2, cy = vph / 2;
-  const newSc = Math.min(3, Math.max(0.03, sc * factor));
-  zoomTarget.tx = cx - (cx - tx) * newSc / sc;
-  zoomTarget.ty = cy - (cy - ty) * newSc / sc;
-  zoomTarget.sc = newSc;
-  if (zoomRaf) cancelAnimationFrame(zoomRaf);
-  zoomRaf = requestAnimationFrame(smoothZoomStep);
-}
-function resetView() { applyStop(0); }
-
-/* ═══════════════════════════════════════════
-   INTERACTION (pan + wheel zoom)
-═══════════════════════════════════════════ */
-function setupInteraction() {
-  let dragging = false, startX, startY, startTx, startTy;
-
-  container.addEventListener('mousedown', e => {
-    if (e.target !== container && !e.target.id.includes('canvas')) return;
-    dragging = true; startX = e.clientX; startY = e.clientY;
-    startTx = tx; startTy = ty;
-  });
-  window.addEventListener('mousemove', e => {
-    if (!dragging) return;
-    tx = startTx + (e.clientX - startX);
-    ty = startTy + (e.clientY - startY);
-    zoomTarget.tx = tx; zoomTarget.ty = ty;
-    applyTransform(false);
-  });
-  window.addEventListener('mouseup', () => dragging = false);
-
-  container.addEventListener('wheel', e => {
-    e.preventDefault();
-    const factor = e.deltaY < 0 ? 1.1 : 0.9;
-    const newSc = Math.min(3, Math.max(0.03, sc * factor));
-    const rect = container.getBoundingClientRect();
-    const mx = e.clientX - rect.left;
-    const my = e.clientY - rect.top;
-    zoomTarget.tx = mx - (mx - tx) * newSc / sc;
-    zoomTarget.ty = my - (my - ty) * newSc / sc;
-    zoomTarget.sc = newSc;
-    if (zoomRaf) cancelAnimationFrame(zoomRaf);
-    zoomRaf = requestAnimationFrame(smoothZoomStep);
-  }, { passive: false });
-
-  // Keyboard shortcuts
-  document.addEventListener('keydown', e => {
-    if (document.getElementById('state-result').classList.contains('active')) {
-      if (e.key === 'ArrowLeft'  || e.key === 'ArrowUp')   navigate(-1);
-      if (e.key === 'ArrowRight' || e.key === 'ArrowDown')  navigate(1);
-      if (e.key === 'r' || e.key === 'R') resetView();
-      if (e.key === 'm' || e.key === 'M') setMode(isSMMode ? 'ia' : 'sitemap');
-      if (e.key === 'Escape') clearHighlight();
-    }
-  });
-}
-
-/* ═══════════════════════════════════════════
-   TOUR / STOPS
-═══════════════════════════════════════════ */
-function applyStop(stopIdx, l2idx = -1) {
-  currentStop = stopIdx;
-  currentL2idx = l2idx;
-  const stop = mainStops[stopIdx];
-  if (!stop) return;
-
-  currentSectionId = stop.id;
-  syncIslandNav(stop.id === 'overview' ? null : stop.id);
-
-  if (l2idx >= 0 && stop.l2 && stop.l2[l2idx]) {
-    const l2 = stop.l2[l2idx];
-    flyTo(l2.cx, L2_CARD_Y + 110, 0.72);
-    highlightSection(stop.id, l2idx);
-    updateBar(stop, l2idx);
-  } else {
-    flyTo(stop.cx, stop.cy, stop.sc);
-    if (stopIdx === 0) clearHighlight();
-    else { highlightSection(stop.id, -1); revealL2(stop.id); }
-    updateBar(stop, -1);
-  }
-  updateNavButtons();
-}
-
-function navigate(dir) {
-  if (currentL2idx >= 0) {
-    const stop = mainStops[currentStop];
-    const next = currentL2idx + dir;
-    if (next >= 0 && next < stop.l2.length) { jumpToL2(currentStop - 1, next); return; }
-    if (dir < 0) { applyStop(currentStop); return; }
-    if (next >= stop.l2.length) { applyStop(currentStop + 1); return; }
-  }
-  const next = currentStop + dir;
-  if (next >= 0 && next < mainStops.length) applyStop(next);
-}
-
-function jumpToL2(secArrayIdx, l2i) {
-  const stopIdx = secArrayIdx + 1;
-  applyStop(stopIdx, l2i);
-}
-
-function goBackToL1() {
-  if (currentStop > 0) applyStop(currentStop, -1);
-}
-
-/* ── Reveal L2 ── */
-function revealL2(secId) {
-  l2Opened.add(secId);
-  canvas.querySelectorAll('.show-l2-btn').forEach(btn => {
-    if (btn.dataset.secid === secId) btn.style.display = 'none';
-  });
-  canvas.querySelectorAll('.ia-el').forEach(el => {
-    // L2 elements are always ia-el; they show when l2 is opened
-    el.style.opacity = '';
-  });
-}
-
-/* ── Highlight ── */
-function highlightSection(secId, l2idx) {
-  clearHighlight();
-  document.querySelectorAll('.pill').forEach(p => {
-    const matches = p.id && (p.id.includes(secId));
-    if (matches) p.classList.add('highlighted');
-    else p.classList.add('dimmed');
-  });
-}
-
-function clearHighlight() {
-  document.querySelectorAll('.pill').forEach(p => {
-    p.classList.remove('highlighted', 'dimmed');
-  });
-  document.querySelectorAll('.card').forEach(c => {
-    c.classList.remove('dimmed');
-  });
-}
-
-/* ── Tour bar ── */
-function updateBar(stop, l2idx) {
-  const nameEl   = document.getElementById('tour-name');
-  const descEl   = document.getElementById('tour-desc');
-  const counterEl = document.getElementById('tour-counter');
-  const chipsEl  = document.getElementById('tour-chips');
-  const bcEl     = document.getElementById('bc-l1');
-
-  if (!stop) return;
-
-  if (l2idx >= 0 && stop.l2 && stop.l2[l2idx]) {
-    const l2 = stop.l2[l2idx];
-    bcEl.textContent = '← ' + stop.name;
-    bcEl.classList.add('visible');
-    nameEl.textContent = l2.name;
-    descEl.textContent = l2.desc || '';
-    chipsEl.innerHTML = '';
-  } else {
-    bcEl.textContent = '';
-    bcEl.classList.remove('visible');
-    nameEl.textContent = stop.name;
-    descEl.textContent = stop.desc || '';
-
-    if (!isSMMode && stop.l2 && stop.l2.length) {
-      chipsEl.innerHTML = stop.l2.map((l2, i) =>
-        `<button class="tour-chip" onclick="jumpToL2(${currentStop - 1},${i})">${l2.name}</button>`
-      ).join('');
-    } else {
-      chipsEl.innerHTML = '';
-    }
-  }
-
-  const total = mainStops.length - 1;
-  counterEl.textContent = currentStop === 0 ? `${total} sections` : `${currentStop} / ${total}`;
-}
-
-function updateNavButtons() {
-  const prev = document.getElementById('btn-prev');
-  const next = document.getElementById('btn-next');
-  if (prev) prev.disabled = (currentStop === 0 && currentL2idx < 0);
-  if (next) next.disabled = (currentStop >= mainStops.length - 1 && currentL2idx < 0);
-}
-
-/* ═══════════════════════════════════════════
-   MODE SWITCHING (IA ↔ SITEMAP)
-═══════════════════════════════════════════ */
-function setMode(m) {
-  isSMMode = (m === 'sitemap');
-  document.body.classList.toggle('sitemap', isSMMode);
-  document.getElementById('btn-ia').classList.toggle('active', m === 'ia');
-  document.getElementById('btn-sm').classList.toggle('active', m === 'sitemap');
-  canvas.style.display   = isSMMode ? 'none' : 'block';
-  smCanvas.style.display = isSMMode ? 'block' : 'none';
-
-  if (isSMMode) {
-    clearHighlight();
-    if (!smBuilt) { buildSitemapCanvas(); smBuilt = true; }
-    smFlyToSection(smSecIdx);
-    document.getElementById('tour-chips').innerHTML = '';
-  } else {
-    applyStop(currentStop, -1);
-  }
-}
-
-/* ═══════════════════════════════════════════
-   SITEMAP CANVAS
-═══════════════════════════════════════════ */
-const SM_L1_H   = 36;
-const SM_GAP    = 80;
-const SM_L2_Y   = SM_L1_Y_REF + SM_L1_H + 40;
-const SM_L2_H   = 28;
-
-function buildSitemapCanvas() {
-  smCanvas.innerHTML = '';
-  smSvg.innerHTML = '';
-  smCanvas.appendChild(smSvg);
-
-  SM_SEC_CXS = [];
-  let curX = 120;
-
-  SECTIONS.forEach((sec, idx) => {
-    const cx = curX;
-    SM_SEC_CXS.push(cx);
-
-    // L1 pill
-    const p = document.createElement('div');
-    p.className = 'sm-pill';
-    const isUtil = sec.utility === true;
-    p.style.cssText = `
-      left:${cx - 90}px;top:${SM_L1_Y_REF}px;
-      width:180px;height:${SM_L1_H}px;
-      background:${isUtil ? COL.l1Utility : COL.l1Primary};
-      color:#fff;font-size:10px;
-    `;
-    p.textContent = sec.name;
-    p.addEventListener('click', () => {
-      smSecIdx = idx;
-      syncIslandNav(sec.id || `sec-${idx}`);
-      updateBar(mainStops[idx + 1], -1);
-      smFlyToSection(idx);
-    });
-    smCanvas.appendChild(p);
-
-    // L2 pills
-    if (sec.l2 && sec.l2.length) {
-      const l2s = sec.l2;
-      const l2Total = l2s.length * 180 + (l2s.length - 1) * 8;
-      let l2StartX = cx - l2Total / 2;
-
-      l2s.forEach((l2, l2i) => {
-        const l2cx = l2StartX + l2i * 188 + 90;
-        const lp = document.createElement('div');
-        lp.className = 'sm-pill';
-        lp.style.cssText = `
-          left:${l2StartX + l2i * 188}px;top:${SM_L2_Y}px;
-          width:180px;height:${SM_L2_H}px;
-          background:${isUtil ? COL.l2Utility : COL.l2Primary};
-          color:#fff;font-size:9px;
-          display:none;
-        `;
-        lp.dataset.smsec = sec.id || `sec-${idx}`;
-        lp.textContent = l2.name;
-        lp.addEventListener('click', () => {
-          setMode('ia');
-          applyStop(idx + 1, l2i);
-        });
-        smCanvas.appendChild(lp);
-
-        // SVG connector
-        const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
-        line.setAttribute('x1', cx); line.setAttribute('y1', SM_L1_Y_REF + SM_L1_H);
-        line.setAttribute('x2', l2cx); line.setAttribute('y2', SM_L2_Y);
-        line.setAttribute('stroke', COL.connector);
-        line.setAttribute('stroke-width', '1');
-        line.style.display = 'none';
-        line.dataset.smsec = sec.id || `sec-${idx}`;
-        smSvg.appendChild(line);
-      });
-
-      // Show pages toggle
-      const toggle = document.createElement('div');
-      toggle.className = 'sm-toggle';
-      toggle.dataset.secid = sec.id || `sec-${idx}`;
-      toggle.style.cssText = `
-        position:absolute;left:${cx - 50}px;top:${SM_L1_Y_REF + SM_L1_H + 8}px;
-        background:#fff;border:1.5px solid ${isUtil ? COL.l1Utility : COL.l1Primary};
-        border-radius:20px;padding:3px 12px;font-size:8.5px;font-weight:800;
-        color:${isUtil ? COL.l1Utility : COL.l1Primary};cursor:pointer;
-        font-family:'Inter',sans-serif;white-space:nowrap;z-index:5;
-        transition:background .15s,color .15s;
-      `;
-      toggle.textContent = '+ Show pages';
-      toggle.addEventListener('click', () => toggleSmL2(sec.id || `sec-${idx}`));
-      smCanvas.appendChild(toggle);
-    }
-
-    curX += 280;
-  });
-
-  const totalW = curX + 120;
-  smCanvas.style.width  = totalW + 'px';
-  smCanvas.style.height = '600px';
-  smSvg.setAttribute('width',  totalW);
-  smSvg.setAttribute('height', '600px');
-}
-
-function toggleSmL2(secId) {
-  const showing = smCanvas.querySelector(`.sm-pill[data-smsec="${secId}"]`)?.style.display === 'flex';
-  smCanvas.querySelectorAll(`.sm-pill[data-smsec="${secId}"]`).forEach(p => {
-    p.style.display = showing ? 'none' : 'flex';
-  });
-  smSvg.querySelectorAll(`line[data-smsec="${secId}"]`).forEach(l => {
-    l.style.display = showing ? 'none' : '';
-  });
-  const toggle = smCanvas.querySelector(`.sm-toggle[data-secid="${secId}"]`);
-  if (toggle) toggle.textContent = showing ? '+ Show pages' : '− Hide pages';
-}
-
-/* ── Sitemap smooth camera ── */
-function applyTransformSM() {
-  smCanvas.style.transform = `translate(${smTx}px,${smTy}px) scale(${smSc})`;
-}
-
 function smoothSmStep() {
   const ease = 0.18;
-  const dsc = smZoomTarget.sc - smSc;
-  const dtx = smZoomTarget.tx - smTx;
-  const dty = smZoomTarget.ty - smTy;
+  const dsc = smZoomTarget.sc - smSc, dtx = smZoomTarget.tx - smTx, dty = smZoomTarget.ty - smTy;
   if (Math.abs(dsc) < 0.0005 && Math.abs(dtx) < 0.3 && Math.abs(dty) < 0.3) {
     smSc = smZoomTarget.sc; smTx = smZoomTarget.tx; smTy = smZoomTarget.ty;
     applyTransformSM(); smZoomRaf = null; return;
@@ -763,8 +444,18 @@ function smoothSmStep() {
   smZoomRaf = requestAnimationFrame(smoothSmStep);
 }
 
+function flyTo(cx, cy, targetSc, animate = true) {
+  const vpw = container.clientWidth || 1280, vph = container.clientHeight || 600;
+  const destTx = vpw / 2 - cx * targetSc;
+  const destTy = vph / 2 - cy * targetSc;
+  if (zoomRaf) { cancelAnimationFrame(zoomRaf); zoomRaf = null; }
+  zoomTarget = { sc: targetSc, tx: destTx, ty: destTy };
+  zoomEase = animate ? 0.2 : 1;
+  zoomRaf = requestAnimationFrame(smoothZoomStep);
+}
+
 function smFlyTo(cx, cy, targetSc) {
-  const vpw = container.clientWidth, vph = container.clientHeight;
+  const vpw = container.clientWidth || 1280, vph = container.clientHeight || 600;
   smZoomTarget.tx = vpw / 2 - cx * targetSc;
   smZoomTarget.ty = vph / 2 - cy * targetSc;
   smZoomTarget.sc = targetSc;
@@ -772,14 +463,559 @@ function smFlyTo(cx, cy, targetSc) {
   smZoomRaf = requestAnimationFrame(smoothSmStep);
 }
 
-function smFlyToSection(idx) {
-  if (!SM_SEC_CXS.length) return;
-  const cx = SM_SEC_CXS[idx] || SM_SEC_CXS[0];
-  const vpw = container.clientWidth, vph = container.clientHeight;
-  const targetSc = Math.min(vpw * 0.6 / 280, vph * 0.7 / 200, 1.4);
-  smFlyTo(cx, SM_L1_Y_REF + 40, targetSc);
-  smSecIdx = idx;
-  syncIslandNav(SECTIONS[idx]?.id || `sec-${idx}`);
+/* ── Scale functions (exact prototype) ── */
+function sectionScale(sec) {
+  if (!sec.l2 || !sec.l2.length) return 0.75;
+  const l2cxs = sec.l2.map(l => l.cx);
+  const span = (Math.max(...l2cxs) - Math.min(...l2cxs)) + CW + 100;
+  return Math.min(0.65, Math.max(0.18, ((container.clientWidth || 1280) * 0.85) / span));
+}
+
+function l1FocusScale() {
+  const contentH = 480, contentW = CW + 80;
+  const sh = (container.clientHeight || 600) * 0.82 / contentH;
+  const sw = (container.clientWidth || 1280) * 0.78 / contentW;
+  return Math.min(sh, sw, 1.5);
+}
+
+function l2FocusScale() {
+  const h = container.clientHeight || 600;
+  const w = container.clientWidth || 1280;
+  const contentH = L2_CARD_Y - L2_Y + 180; // ~254px
+  const contentW = CW + 40;                 // ~480px
+  const sh = h * 0.92 / contentH;
+  const sw = w * 0.80 / contentW;
+  return Math.min(Math.max(sh, sw), 1.8);
+}
+
+/* ── Zoom controls ── */
+function zoomIn()  { adjustZoom(1.25); }
+function zoomOut() { adjustZoom(0.8); }
+function adjustZoom(factor) {
+  const vpw = container.clientWidth || 1280, vph = container.clientHeight || 600;
+  const newSc = Math.min(3, Math.max(0.03, sc * factor));
+  zoomTarget.tx = vpw / 2 - (vpw / 2 - tx) * newSc / sc;
+  zoomTarget.ty = vph / 2 - (vph / 2 - ty) * newSc / sc;
+  zoomTarget.sc = newSc;
+  if (zoomRaf) cancelAnimationFrame(zoomRaf);
+  zoomRaf = requestAnimationFrame(smoothZoomStep);
+}
+
+function resetView() {
+  if (isSMMode) {
+    const vpw = container.clientWidth || 1280, vph = container.clientHeight || 600;
+    smSc = Math.min(vpw / (SECTIONS.length * SM_SLOT + 400), vph / 480) * 0.86;
+    const midCx = SM_SEC_CXS[Math.floor(SM_SEC_CXS.length / 2)] || 0;
+    smTx = vpw / 2 - midCx * smSc;
+    smTy = vph / 2 - 280 * smSc;
+    applyTransformSM();
+    syncIslandNav(null);
+    return;
+  }
+  hideAllL2(); hideAllCtas(); syncIslandNav(null);
+  flyTo(START_CX, 700, 0.065);
+}
+
+/* ═══════════════════════════════════════════
+   INTERACTION (pan + wheel zoom)
+═══════════════════════════════════════════ */
+function setupInteraction() {
+  let isPanning = false, panSX, panSY, panTX, panTY;
+
+  container.addEventListener('mousedown', e => {
+    if (e.button !== 0 || e.target.closest('.pill,.show-l2-btn,.sm-l2-toggle,.inav-tab,.nav-pill,.tb-nav-btn')) return;
+    isPanning = true;
+    panSX = e.clientX; panSY = e.clientY;
+    panTX = isSMMode ? smTx : tx;
+    panTY = isSMMode ? smTy : ty;
+    container.classList.add('panning');
+    if (isSMMode && smZoomRaf) { cancelAnimationFrame(smZoomRaf); smZoomRaf = null; }
+    (isSMMode ? smCanvas : canvas).style.transition = 'none';
+  });
+
+  document.addEventListener('mousemove', e => {
+    if (!isPanning) return;
+    const ntx = panTX + (e.clientX - panSX);
+    const nty = panTY + (e.clientY - panSY);
+    if (isSMMode) { smTx = ntx; smTy = nty; applyTransformSM(); }
+    else { tx = ntx; ty = nty; zoomTarget.tx = tx; zoomTarget.ty = ty; applyTransform(false); }
+  });
+
+  document.addEventListener('mouseup', () => {
+    if (isPanning) { isPanning = false; container.classList.remove('panning'); }
+  });
+
+  container.addEventListener('wheel', e => {
+    e.preventDefault();
+    if (isSMMode) {
+      const f = e.deltaY < 0 ? 1.1 : 1 / 1.1;
+      const newSc = Math.max(0.05, Math.min(4, smSc * f));
+      const rect = container.getBoundingClientRect();
+      const mx = e.clientX - rect.left, my = e.clientY - rect.top;
+      smTx = mx - (mx - smTx) * newSc / smSc;
+      smTy = my - (my - smTy) * newSc / smSc;
+      smSc = newSc; applyTransformSM(); return;
+    }
+    const f = e.deltaY < 0 ? 1.06 : 1 / 1.06;
+    const newSc = Math.max(0.04, Math.min(3, zoomTarget.sc * f));
+    const rect = container.getBoundingClientRect();
+    const mx = e.clientX - rect.left, my = e.clientY - rect.top;
+    zoomTarget.tx = mx - (mx - zoomTarget.tx) * newSc / zoomTarget.sc;
+    zoomTarget.ty = my - (my - zoomTarget.ty) * newSc / zoomTarget.sc;
+    zoomTarget.sc = newSc;
+    if (!zoomRaf) zoomRaf = requestAnimationFrame(smoothZoomStep);
+  }, { passive: false });
+
+  document.addEventListener('keydown', e => {
+    if (!document.getElementById('state-result').classList.contains('active')) return;
+    if (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT') return;
+    if (e.key === 'ArrowRight' || e.key === 'ArrowDown') nextStop();
+    if (e.key === 'ArrowLeft'  || e.key === 'ArrowUp')   prevStop();
+    if (e.key === 'r' || e.key === 'R') resetView();
+    if (e.key === 'm' || e.key === 'M') setMode(isSMMode ? 'ia' : 'sitemap');
+    if (e.key === 'Escape') clearHighlight();
+  });
+}
+
+/* ═══════════════════════════════════════════
+   L2 SHOW / HIDE (prototype pattern)
+═══════════════════════════════════════════ */
+function hideAllCtas() {
+  document.querySelectorAll('.show-l2-btn').forEach(b => b.classList.remove('visible'));
+}
+
+function hideAllL2() {
+  document.querySelectorAll('.l2-svg-group').forEach(g => g.style.display = 'none');
+  document.querySelectorAll('.pill[data-level="l2"]').forEach(p => p.style.display = 'none');
+  document.querySelectorAll('.pill[data-level="l3"]').forEach(p => p.style.display = 'none');
+  document.querySelectorAll('.card[data-level="l2"]').forEach(c => c.style.display = 'none');
+  l2Opened.clear();
+}
+
+function revealL2(secId) {
+  const sec = SECTIONS.find(s => s.id === secId);
+  if (!sec) return;
+  l2Opened.add(secId);
+  // Show SVG group
+  const g = svg.querySelector(`.l2-svg-group[data-l2sec="${secId}"]`);
+  if (g) g.style.display = '';
+  // Show L2 pills
+  document.querySelectorAll(`.pill[data-section="${secId}"][data-level="l2"]`).forEach(p => p.style.display = '');
+  // Show L3 pills
+  document.querySelectorAll(`.pill[data-l2sec="${secId}"][data-level="l3"]`).forEach(p => p.style.display = '');
+  // Show L2 cards
+  document.querySelectorAll(`.card[data-l2sec="${secId}"]`).forEach(c => c.style.display = '');
+  // Hide CTA
+  const btn = canvas.querySelector(`.show-l2-btn[data-l2sec="${secId}"]`);
+  if (btn) btn.classList.remove('visible');
+  // Zoom to full section
+  flyTo(sec.cx, 1000, sectionScale(sec));
+}
+
+/* ═══════════════════════════════════════════
+   HIGHLIGHT
+═══════════════════════════════════════════ */
+function clearHighlight() {
+  document.querySelectorAll('.pill').forEach(p => p.classList.remove('highlight', 'dimmed'));
+  document.querySelectorAll('.card').forEach(c => c.classList.remove('dimmed'));
+}
+
+function highlightSection(secId) {
+  clearHighlight();
+  const sec = SECTIONS.find(s => s.id === secId);
+  if (!sec) return;
+  document.querySelectorAll('.pill').forEach(p => {
+    const matches = p.dataset.section === secId || p.textContent.trim() === companyName;
+    p.classList.toggle('highlight', matches);
+    p.classList.toggle('dimmed', !matches && !!p.dataset.section && p.dataset.section !== secId);
+  });
+}
+
+function highlightL2(secId, l2idx) {
+  clearHighlight();
+  const sec = SECTIONS.find(s => s.id === secId);
+  if (!sec || !sec.l2[l2idx]) return;
+  const l2 = sec.l2[l2idx];
+  document.querySelectorAll('.pill').forEach(p => {
+    const isTarget = p.dataset.section === secId && p.dataset.l2cx == l2.cx;
+    const isParent = p.textContent.trim() === sec.name || p.textContent.trim() === companyName;
+    p.classList.toggle('highlight', isTarget || isParent);
+    p.classList.toggle('dimmed', !isTarget && !isParent && !!p.dataset.section);
+  });
+}
+
+/* ═══════════════════════════════════════════
+   TOUR / STOPS (faithful prototype port)
+═══════════════════════════════════════════ */
+function applyStop(idx, l2idx = -1) {
+  const stop = mainStops[idx];
+  if (!stop) return;
+  currentStop = idx;
+  currentL2idx = l2idx;
+
+  if (l2idx === -1) {
+    // L1 stop
+    currentSectionId = stop.id;
+    const sec = stop.data;
+    hideAllL2();
+    hideAllCtas();
+    if (sec && sec.l2 && sec.l2.length) {
+      const btn = canvas.querySelector(`.show-l2-btn[data-l2sec="${stop.id}"]`);
+      if (btn) btn.classList.add('visible');
+      flyTo(stop.cx, L1_FOCUS_CY, l1FocusScale());
+    } else {
+      flyTo(stop.cx, L1_FOCUS_CY, l1FocusScale());
+    }
+    updateBar(stop, null);
+    if (sec) { highlightSection(stop.id); syncIslandNav(stop.id); }
+    else { clearHighlight(); syncIslandNav(null); }
+  } else {
+    // L2 stop
+    const sec = stop.data;
+    if (!sec || !sec.l2[l2idx]) return;
+    const l2 = sec.l2[l2idx];
+    // Ensure L2 is revealed first
+    if (!l2Opened.has(stop.id)) revealL2(stop.id);
+    flyTo(l2.cx, L2_FOCUS_CY, l2FocusScale());
+    updateBar(stop, l2);
+    highlightL2(stop.id, l2idx);
+  }
+  updateNavButtons();
+}
+
+function nextStop() {
+  if (isSMMode) {
+    if (smSecIdx < SECTIONS.length - 1) { smSecIdx++; focusSection(SECTIONS[smSecIdx].id); }
+    updateSmNavBtns(); return;
+  }
+  const stop = mainStops[currentStop];
+  const sec = stop ? stop.data : null;
+  if (currentL2idx > -1) {
+    const next = currentL2idx + 1;
+    if (next < sec.l2.length) { applyStop(currentStop, next); return; }
+    if (currentStop < mainStops.length - 1) { currentStop++; applyStop(currentStop); }
+    return;
+  }
+  if (sec && sec.l2 && sec.l2.length && l2Opened.has(sec.id)) { applyStop(currentStop, 0); return; }
+  if (currentStop < mainStops.length - 1) { currentStop++; applyStop(currentStop); }
+}
+
+function prevStop() {
+  if (isSMMode) {
+    if (smSecIdx > 0) { smSecIdx--; focusSection(SECTIONS[smSecIdx].id); }
+    updateSmNavBtns(); return;
+  }
+  if (currentL2idx > -1) {
+    if (currentL2idx > 0) { applyStop(currentStop, currentL2idx - 1); return; }
+    applyStop(currentStop, -1); return;
+  }
+  if (currentStop > 0) { currentStop--; applyStop(currentStop); }
+}
+
+function focusSection(secId) {
+  if (isSMMode) {
+    const idx = SECTIONS.findIndex(s => s.id === secId);
+    if (idx < 0) return;
+    const cx = SM_SEC_CXS[idx];
+    const sec = SECTIONS[idx];
+    const vpw = container.clientWidth || 1280, vph = container.clientHeight || 600;
+    const l2Vis = smL2Open.has(sec.id) && sec.l2 && sec.l2.length > 0;
+    const contentH = l2Vis ? (SM_L2_STY + sec.l2.length * SM_L2_ROW_H + 60) : (SM_L1_Y_REF + 56);
+    const targetSc = Math.min(vpw * 0.62 / 300, vph * 0.72 / contentH, 1.3);
+    const focusCy = l2Vis ? (SM_L1_Y_REF + (SM_L2_STY + sec.l2.length * SM_L2_ROW_H) / 2) : SM_L1_Y_REF + 13;
+    smSecIdx = idx;
+    syncIslandNav(secId);
+    smFlyTo(cx, focusCy, targetSc);
+    updateSmNavBtns();
+    const stopIdx = mainStops.findIndex(s => s.id === secId);
+    if (stopIdx > -1) updateBar(mainStops[stopIdx], null);
+    return;
+  }
+  const idx = mainStops.findIndex(s => s.id === secId);
+  if (idx > -1) { currentStop = idx; applyStop(idx); }
+}
+
+function focusL2(secId, l2idx) {
+  const idx = mainStops.findIndex(s => s.id === secId);
+  if (idx > -1) { currentStop = idx; applyStop(idx, l2idx); }
+}
+
+function goBackToL1() {
+  if (currentL2idx > -1 && currentStop > 0) applyStop(currentStop, -1);
+}
+
+function updateNavButtons() {
+  const prev = document.getElementById('btn-prev');
+  const next = document.getElementById('btn-next');
+  if (prev) prev.disabled = currentStop <= 0 && currentL2idx < 0;
+  if (next) next.disabled = currentStop >= mainStops.length - 1 && currentL2idx < 0;
+}
+
+function updateSmNavBtns() {
+  const prev = document.getElementById('btn-prev');
+  const next = document.getElementById('btn-next');
+  if (prev) prev.disabled = smSecIdx <= 0;
+  if (next) next.disabled = smSecIdx >= SECTIONS.length - 1;
+}
+
+/* ── Tour bar ── */
+function updateBar(stop, l2) {
+  const nameEl    = document.getElementById('tour-name');
+  const descEl    = document.getElementById('tour-desc');
+  const counterEl = document.getElementById('tour-counter');
+  const chipsEl   = document.getElementById('tour-chips');
+  const bcEl      = document.getElementById('bc-l1');
+  if (!stop) return;
+
+  if (l2) {
+    bcEl.textContent = '← ' + stop.name;
+    bcEl.classList.add('visible');
+    if (nameEl) nameEl.textContent = l2.name;
+    if (descEl) descEl.textContent = (l2.info && l2.info[0]) ? l2.info[0] : '';
+    const chips = (l2.l3 || []).map(l3 => `<span class="chip l3-chip">${l3.name}</span>`).join('');
+    if (chipsEl) chipsEl.innerHTML = chips;
+  } else {
+    bcEl.classList.remove('visible');
+    bcEl.textContent = '';
+    if (nameEl) nameEl.textContent = stop.name;
+    if (descEl) descEl.textContent = stop.desc || '';
+    const data = stop.data;
+    if (!isSMMode && data && data.l2 && data.l2.length && l2Opened.has(data.id)) {
+      const chips = data.l2.map((l2item, i) =>
+        `<span class="chip" onclick="focusL2('${data.id}',${i})">${l2item.name}</span>`
+      ).join('');
+      if (chipsEl) chipsEl.innerHTML = chips;
+    } else {
+      if (chipsEl) chipsEl.innerHTML = '';
+    }
+  }
+
+  const total = mainStops.length - 1;
+  if (counterEl) counterEl.textContent = currentStop === 0 ? `${total} sections` : `${currentStop} / ${total}`;
+}
+
+/* ═══════════════════════════════════════════
+   MODE SWITCHING
+═══════════════════════════════════════════ */
+function setMode(m) {
+  const fromSecId = isSMMode ? (SECTIONS[smSecIdx]?.id || null) : currentSectionId;
+
+  isSMMode = (m === 'sitemap');
+  document.body.classList.toggle('sitemap', isSMMode);
+  document.getElementById('btn-ia').classList.toggle('active', m === 'ia');
+  document.getElementById('btn-sm').classList.toggle('active', m === 'sitemap');
+  canvas.style.display   = isSMMode ? 'none' : 'block';
+  smCanvas.style.display = isSMMode ? 'block' : 'none';
+
+  if (isSMMode) {
+    clearHighlight();
+    document.getElementById('bc-l1').classList.remove('visible');
+    if (document.getElementById('tour-chips')) document.getElementById('tour-chips').innerHTML = '';
+    if (!smBuilt) { buildSitemapCanvas(); smBuilt = true; }
+    const vpw = container.clientWidth || 1280, vph = container.clientHeight || 600;
+    const midCx = SM_SEC_CXS[Math.floor(SM_SEC_CXS.length / 2)] || 0;
+    smSc = Math.min(vpw / (SECTIONS.length * SM_SLOT + 400), vph / 480) * 0.88;
+    smTx = vpw / 2 - midCx * smSc;
+    smTy = vph / 2 - 280 * smSc;
+    applyTransformSM();
+    smSecIdx = 0; updateSmNavBtns(); syncIslandNav(null);
+    if (fromSecId) {
+      const idx = SECTIONS.findIndex(s => s.id === fromSecId);
+      if (idx >= 0) { smSecIdx = idx; focusSection(fromSecId); }
+    }
+  } else {
+    if (fromSecId) {
+      const idx = mainStops.findIndex(s => s.id === fromSecId);
+      if (idx > -1) { currentStop = idx; applyStop(idx, -1); }
+      else resetView();
+    } else {
+      resetView();
+    }
+  }
+}
+
+/* ═══════════════════════════════════════════
+   SITEMAP CANVAS (exact prototype pattern)
+═══════════════════════════════════════════ */
+function buildSitemapCanvas() {
+  smCanvas.innerHTML = '';
+  smSvg.innerHTML = '';
+  smCanvas.appendChild(smSvg);
+
+  // Compute section x positions (340px apart, starting at 200)
+  SM_SEC_CXS = SECTIONS.map((_, i) => 200 + i * SM_SLOT);
+
+  const SM_SCX = SM_SEC_CXS[Math.floor(SECTIONS.length / 2)] || 200; // start pill cx
+  const SM_STY = 46; // start pill top y
+
+  const totalW = SECTIONS.length * SM_SLOT + 400;
+  const totalH = SM_L2_STY + Math.max(...SECTIONS.map(s => (s.l2 ? s.l2.length : 0))) * SM_L2_ROW_H + 120;
+  smCanvas.style.width  = totalW + 'px';
+  smCanvas.style.height = Math.max(totalH, 600) + 'px';
+  smSvg.setAttribute('width',  totalW);
+  smSvg.setAttribute('height', Math.max(totalH, 600));
+
+  function smPill(label, cls, cx, y, w, h, opts = {}) {
+    const p = document.createElement('div');
+    p.className = 'pill ' + cls;
+    p.textContent = label;
+    p.style.cssText = `left:${cx - w / 2}px;top:${y}px;width:${w}px;height:${h}px;font-size:10px;border-radius:6px;`;
+    if (opts.hidden) p.style.display = 'none';
+    if (opts.cursor) p.style.cursor = opts.cursor;
+    if (opts.bg) p.style.background = opts.bg;
+    if (opts.color) p.style.color = opts.color;
+    if (opts.dataset) Object.entries(opts.dataset).forEach(([k, v]) => p.dataset[k] = v);
+    if (opts.onclick) p.onclick = opts.onclick;
+    smCanvas.appendChild(p);
+    return p;
+  }
+
+  function smLine(x1, y1, x2, y2, g) {
+    const l = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+    l.setAttribute('x1', x1); l.setAttribute('y1', y1);
+    l.setAttribute('x2', x2); l.setAttribute('y2', y2);
+    l.setAttribute('stroke', '#8B5FD4');
+    l.setAttribute('stroke-width', '1.5');
+    l.setAttribute('stroke-linecap', 'round');
+    (g || smSvg).appendChild(l);
+  }
+
+  function smDot(cx, cy, g) {
+    const c = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+    c.setAttribute('cx', cx); c.setAttribute('cy', cy);
+    c.setAttribute('r', '3'); c.setAttribute('fill', '#8B5FD4');
+    (g || smSvg).appendChild(c);
+  }
+
+  // START pill
+  const sp = smPill(companyName, 'pill-start', SM_SCX, SM_STY, 160, 30,
+    { bg: '#F5B840', color: '#1A1A1A', cursor: 'pointer' });
+  sp.style.fontSize = '11px';
+  smLine(SM_SCX, SM_STY + 30, SM_SCX, SM_SPINE_Y);
+
+  // Main spine
+  smLine(SM_SEC_CXS[0], SM_SPINE_Y, SM_SEC_CXS[SM_SEC_CXS.length - 1], SM_SPINE_Y);
+  smDot(SM_SCX, SM_SPINE_Y);
+
+  SECTIONS.forEach((sec, idx) => {
+    const cx = SM_SEC_CXS[idx];
+    const isUtil = sec.utility === true;
+
+    smDot(cx, SM_SPINE_Y);
+    smLine(cx, SM_SPINE_Y, cx, SM_L1_Y);
+
+    const l1cls = isUtil ? 'pill-l1 utility' : 'pill-l1';
+    const l1p = smPill(sec.name, l1cls, cx, SM_L1_Y, SM_L1_PW, SM_L1_PH, {
+      bg: isUtil ? '#1A3A5C' : '#3D6B35',
+      color: '#fff',
+      cursor: 'pointer',
+    });
+    l1p.onclick = () => { smSecIdx = idx; syncIslandNav(sec.id); updateBar(mainStops[idx + 1], null); smFlyTo(cx, SM_L1_Y_REF + 20, 1.0); };
+
+    if (!sec.l2 || !sec.l2.length) return;
+
+    // Toggle button
+    const toggleBtn = document.createElement('div');
+    toggleBtn.className = 'sm-l2-toggle' + (isUtil ? ' utility' : '');
+    toggleBtn.dataset.smsec = sec.id;
+    toggleBtn.textContent = '+ Show pages';
+    toggleBtn.style.cssText = `position:absolute;left:${cx - 46}px;top:${SM_L1_Y + SM_L1_PH + 8}px;`;
+    toggleBtn.onclick = e => { e.stopPropagation(); toggleSmL2(sec.id); };
+    smCanvas.appendChild(toggleBtn);
+
+    // SVG group for L2 connectors — hidden by default
+    const l2g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+    l2g.setAttribute('class', 'sm-l2g');
+    l2g.setAttribute('data-smsec', sec.id);
+    l2g.style.display = 'none';
+    smSvg.appendChild(l2g);
+
+    const n = sec.l2.length;
+    const branchX = cx - SM_L2_PW / 2 - 18;
+    const firstCY = SM_L2_STY + SM_L2_PH / 2;
+    const lastCY  = SM_L2_STY + (n - 1) * SM_L2_ROW_H + SM_L2_PH / 2;
+
+    smLine(cx, SM_L1_Y + SM_L1_PH, cx, firstCY, l2g);
+    smLine(cx, firstCY, branchX, firstCY, l2g);
+    if (n > 1) smLine(branchX, firstCY, branchX, lastCY, l2g);
+
+    sec.l2.forEach((l2, i) => {
+      const l2Y  = SM_L2_STY + i * SM_L2_ROW_H;
+      const l2CY = l2Y + SM_L2_PH / 2;
+      smDot(branchX, l2CY, l2g);
+      smLine(branchX, l2CY, cx - SM_L2_PW / 2, l2CY, l2g);
+
+      const l2cls = isUtil ? 'pill-l2 utility' : 'pill-l2';
+      smPill(l2.name, l2cls, cx, l2Y, SM_L2_PW, SM_L2_PH, {
+        hidden: true,
+        cursor: 'pointer',
+        bg: isUtil ? '#1A3050' : '#1A4040',
+        color: '#fff',
+        dataset: { smsec: sec.id, sml2idx: String(i) },
+        onclick: e => { e.stopPropagation(); smL2Click(sec.id, i); },
+      });
+    });
+  });
+}
+
+function toggleSmL2(secId) {
+  const sec = SECTIONS.find(s => s.id === secId);
+  if (!sec || !sec.l2 || !sec.l2.length) return;
+  const isOpen = smL2Open.has(secId);
+  if (isOpen) { smL2Open.delete(secId); } else { smL2Open.add(secId); }
+  const nowOpen = !isOpen;
+
+  smCanvas.querySelectorAll(`.pill[data-smsec="${secId}"]`).forEach(p => {
+    p.style.display = nowOpen ? '' : 'none';
+  });
+  const g = smSvg.querySelector(`.sm-l2g[data-smsec="${secId}"]`);
+  if (g) g.style.display = nowOpen ? '' : 'none';
+  const btn = smCanvas.querySelector(`.sm-l2-toggle[data-smsec="${secId}"]`);
+  if (btn) {
+    btn.classList.toggle('open', nowOpen);
+    btn.textContent = nowOpen ? '− Hide pages' : '+ Show pages';
+  }
+  if (nowOpen) {
+    const idx = SECTIONS.findIndex(s => s.id === secId);
+    if (idx >= 0) focusSection(secId);
+  }
+}
+
+function smL2Click(secId, l2idx) {
+  setMode('ia');
+  revealL2(secId);
+  const stopIdx = mainStops.findIndex(s => s.id === secId);
+  if (stopIdx > -1) { currentStop = stopIdx; applyStop(stopIdx, l2idx); }
+  showToast('Switched to IA view');
+  showBackToSm();
+}
+
+function showToast(msg) {
+  const t = document.getElementById('ia-toast');
+  if (!t) return;
+  t.textContent = msg;
+  t.classList.add('show');
+  clearTimeout(t._timer);
+  t._timer = setTimeout(() => t.classList.remove('show'), 2500);
+}
+
+function showBackToSm() {
+  const btn = document.getElementById('back-to-sm');
+  if (!btn) return;
+  btn.style.display = 'block';
+  requestAnimationFrame(() => btn.classList.add('visible'));
+}
+
+function hideBackToSm() {
+  const btn = document.getElementById('back-to-sm');
+  if (!btn) return;
+  btn.classList.remove('visible');
+  setTimeout(() => { if (btn && !btn.classList.contains('visible')) btn.style.display = 'none'; }, 300);
+}
+
+function backToSitemap() {
+  hideBackToSm();
+  setMode('sitemap');
 }
 
 /* ═══════════════════════════════════════════
@@ -791,18 +1027,13 @@ function updateMinimap() {
   const ctx = mm.getContext('2d');
   const mmW = mm.width, mmH = mm.height;
   ctx.clearRect(0, 0, mmW, mmH);
-
-  // Background
   ctx.fillStyle = '#f4f4f6';
   ctx.fillRect(0, 0, mmW, mmH);
 
-  // Viewport indicator
   const cw = parseFloat(canvas.style.width) || 22400;
   const ch = parseFloat(canvas.style.height) || 2000;
-  const scaleX = mmW / cw;
-  const scaleY = mmH / ch;
-  const vpw = container.clientWidth;
-  const vph = container.clientHeight;
+  const scaleX = mmW / cw, scaleY = mmH / ch;
+  const vpw = container.clientWidth || 1280, vph = container.clientHeight || 600;
 
   const vx = (-tx / sc) * scaleX;
   const vy = (-ty / sc) * scaleY;
@@ -857,12 +1088,12 @@ function buildCompetitorsPanel(iaData) {
 function toggleCompPanel() {
   const panel = document.getElementById('comp-side-panel');
   const btn   = document.getElementById('comp-panel-btn');
-  panel.classList.toggle('open');
-  btn.classList.toggle('open');
+  if (panel) panel.classList.toggle('open');
+  if (btn) btn.classList.toggle('open');
 }
 
 function showRationale(text) {
-  const bar = document.getElementById('rationale-bar');
+  const bar   = document.getElementById('rationale-bar');
   const textEl = document.getElementById('rationale-text');
   if (!bar || !textEl) return;
   textEl.textContent = text;

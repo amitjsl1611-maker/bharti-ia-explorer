@@ -242,6 +242,9 @@ function goBack() {
   if (c) { c.innerHTML = ''; c.appendChild(document.getElementById('svg') || document.createElementNS('http://www.w3.org/2000/svg','svg')); }
   if (s) s.innerHTML = '';
   document.body.classList.remove('sitemap');
+  const islandNav = document.getElementById('island-nav');
+  if (islandNav) islandNav.style.display = 'none';
+  document.body.classList.remove('has-inav');
   const compPanel = document.getElementById('comp-side-panel');
   if (compPanel) compPanel.classList.remove('open');
   const compBtn = document.getElementById('comp-panel-btn');
