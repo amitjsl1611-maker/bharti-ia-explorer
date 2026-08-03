@@ -6,7 +6,7 @@
 'use strict';
 
 /* ── CONFIG — set your Worker URL here after deploy ── */
-const WORKER_URL = 'https://ia-map-worker.your-subdomain.workers.dev';
+const WORKER_URL = 'https://ia-map-worker.ajaiswal-bd5.workers.dev/';
 
 /* ── STATE ── */
 let manualCompetitors = [];
