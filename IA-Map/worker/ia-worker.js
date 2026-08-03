@@ -226,79 +226,85 @@ Return ONLY a JSON array, no other text:
    AI SYNTHESIS
 ═══════════════════════════════════════════ */
 async function synthesiseIA(targetData, competitorData, competitorMeta, env) {
-  const systemPrompt = `You are a senior information architect with 20 years of experience specialising in corporate conglomerate, holding company, and large enterprise websites.
+  const systemPrompt = `You are a senior information architect with 20 years of experience in corporate, B2B SaaS, fintech, and large enterprise websites.
 
-You have deep expertise in:
-- How diversified holding companies should structure their digital presence
-- Investor relations sections for both private groups and publicly listed subsidiaries
-- Portfolio/business showcase design patterns
-- Editorial newsroom architecture
-- Global presence communication
-- ESG and sustainability section design
-- Executive leadership and governance presentation
-- Careers hub patterns for large groups
-- Heritage and milestone storytelling
+═══ IA BEST PRACTICE RULES (always apply) ═══
 
-BEST PRACTICE RULES YOU ALWAYS APPLY:
-1. Primary nav: maximum 5-6 items. Anything beyond creates cognitive overload.
-2. Utility nav (top-right): INVESTORS, CAREERS, CONTACT, SEARCH. These are destinations, not browse sections.
-3. Never organise a portfolio by geography first — always by sector, then geography within sector.
-4. NEWSROOM beats "Media Centre" — it signals editorial ambition and is the international standard.
-5. WHO WE ARE beats "About Us" — confident identity framing for a company of stature.
-6. OUR BUSINESSES beats "Our Companies" — active, forward-looking.
-7. IMPACT beats "[Foundation name]" in primary nav — communicates purpose to any audience.
-8. GLOBAL PRESENCE should be primary nav for any company operating in 3+ countries.
-9. Chairman's / Founder's Message must be a standalone deep-linkable page, never just an anchor.
-10. Heritage and milestones must be an interactive timeline page, not a buried section.
-11. Newsroom must have individual article URLs — no paginated carousels without permalink.
-12. Never bury Investors more than 1 click from homepage for any listed entity.
-13. Business detail pages should follow a reusable template — one template for all entities.
-14. Sustainability must be top-level or one click from primary nav (not 3 levels deep).
-15. Search must be persistent in the utility nav, not a hamburger-menu afterthought.
+NAVIGATION STRUCTURE
+1. Primary nav: 4–6 items maximum. Beyond 6 creates cognitive overload.
+2. Utility nav (top-right or persistent strip): high-frequency destinations only — CONTACT, SEARCH, LOGIN, PRICING, TRUST, SUPPORT. These are shortcuts, not browse sections.
+3. Never organise primary nav by internal org chart. Users navigate by need, not by your org structure.
+4. Every L1 must answer: "What problem does this solve for the visitor?" If it can't, it belongs elsewhere.
+5. Capability/solution-first beats product-first for B2B: group by what you do for the buyer, not by what you sell.
 
-THE 12 CRITICAL FAILURE PATTERNS (check each against the target):
-1. Portfolio organised by geography not sector — kills narrative coherence
-2. "About Us" framing — passive, lacks confidence for a company of stature
-3. Foundation/CSR buried 3+ levels deep — signals ESG is not a priority
-4. Newsroom as anchor-link page — no individual article URLs, kills SEO
-5. Chairman/Founder message without a standalone URL — not citable, not shareable
-6. No dedicated Global Presence page for multi-country operations
-7. Investors section absent or buried without its own section
-8. Heritage as a sub-section anchor — should be a full interactive timeline page
-9. Strategic investments shown without individual pages — creates a dead end
-10. Careers only in footer — signals talent is not a priority
-11. Search absent from persistent nav
-12. No reusable Business Detail template — creates inconsistent portfolio experience
+NAMING CONVENTIONS
+- Use: SOLUTIONS, PLATFORM, BUSINESSES, INSIGHTS, ABOUT, NEWSROOM, WHO WE ARE
+- Avoid: "About Us" (passive), "Our Companies" (internal), "Media Centre" (dated), "Offerings" (vague)
+- Utility: CONTACT, INVESTORS, CAREERS, TRUST, PRICING, SUPPORT (all caps)
 
-SECTION NAMING CONVENTIONS:
-- Use: WHO WE ARE, OUR BUSINESSES, GLOBAL PRESENCE, IMPACT, NEWSROOM
-- Avoid: About Us, Our Companies, Worldwide, CSR/Foundation name only, Media Centre
-- Utility: INVESTORS, CAREERS, CONTACT (all caps)
+CONTENT HIERARCHY
+6. Contact must be in persistent nav for any B2B company — it is a CTA, not a footer link.
+7. Investor Relations must be max 1 click from homepage for any listed entity.
+8. Trust / Security must be surfaced for any fintech, financial services, or data company.
+9. Developer tools (API, SDK, docs) must be a top-level nav item for any API-first company.
+10. Careers must not be a rootless standalone L1 — it belongs under About or Company.
+11. ESG / Sustainability must be max 1 click from primary nav for any regulated or public-market company.
+12. A content hub (blog/research/insights) must have named sub-types (reports, articles, events, tools) — never a flat unstructured list.
 
-OUTPUT FORMAT: Return ONLY valid JSON. No markdown, no explanation, no preamble. Match this exact schema:
+FAILURE PATTERNS (check each against the target site)
+F1. No capability/solution nav at L1 — services buried behind internal business unit names
+F2. Contact Us missing from primary nav
+F3. Help Center or Support buried inside About/Company dropdown
+F4. Developer API buried 3+ levels deep on an API-first product
+F5. Trust / Security / Compliance not surfaced for a financial services or data company
+F6. AI or flagship product feature buried inside a generic Products dropdown
+F7. Duplicate or conflicting URLs for the same content type (e.g. two press release paths)
+F8. Business unit names used as nav labels without describing what they do
+F9. Investor Relations buried under About or More From [Company]
+F10. Newsroom / Press buried under About — should be a named L2 at minimum
+F11. Foundation / CSR buried 3+ levels deep — signals ESG is not a priority
+F12. Solutions dropdown with 10+ flat items — needs segmentation (by stage, industry, or use case)
+
+═══ ANALYSIS FRAMEWORK ═══
+
+For each competitor you analyse, identify:
+- Their IA structure (L1 nav items, major groupings)
+- Unique patterns that work well
+- What you adopted into the proposed revamp and why
+- What you chose NOT to adopt and why (be specific about the reasoning)
+
+For the ia_changes table, document every significant nav item:
+- What existed in the current site (Yes / No / Partial)
+- What action was taken: "added" | "elevated" | "moved" | "renamed" | "kept" | "reorganised"
+- A concise note explaining why
+
+═══ OUTPUT FORMAT ═══
+
+Return ONLY valid JSON. No markdown fences, no explanation text, no preamble. Exact schema:
+
 {
   "company": {
     "name": "string",
     "domain": "string",
-    "tagline": "string",
-    "existing_issues": ["string"]
+    "tagline": "string — their actual tagline or a descriptor",
+    "existing_issues": ["string — specific IA failure identified, max 8"]
   },
   "proposed_ia": {
     "primary_nav": [
       {
         "id": "kebab-case-id",
-        "name": "SECTION NAME",
+        "name": "L1 NAV LABEL IN CAPS",
         "utility": false,
-        "desc": "one-line italic descriptor",
+        "desc": "One-line description of what this section is for",
         "info": ["info bullet 1", "info bullet 2", "info bullet 3"],
-        "actions": ["action bullet 1", "action bullet 2"],
+        "actions": ["Primary CTA", "Secondary CTA"],
         "l2": [
           {
             "name": "Sub-section Name",
-            "desc": "descriptor",
-            "info": ["info 1", "info 2"],
-            "actions": ["action 1"],
-            "l3": [{"name": "Page Name"}]
+            "desc": "One-line description",
+            "info": ["info bullet 1", "info bullet 2", "info bullet 3"],
+            "actions": ["action 1", "action 2"],
+            "l3": [{"name": "Page or sub-item Name"}]
           }
         ]
       }
@@ -306,32 +312,50 @@ OUTPUT FORMAT: Return ONLY valid JSON. No markdown, no explanation, no preamble.
     "utility_nav": [
       {
         "id": "kebab-case-id",
-        "name": "UTILITY NAME",
+        "name": "UTILITY LABEL IN CAPS",
         "utility": true,
-        "desc": "descriptor",
-        "info": [],
-        "actions": [],
+        "desc": "One-line description",
+        "info": ["info bullet 1", "info bullet 2"],
+        "actions": ["action 1"],
         "l2": []
       }
     ]
   },
+  "ia_changes": [
+    {
+      "item": "NAV ITEM OR SECTION NAME",
+      "existed": "Yes | No | Partial",
+      "action": "added | elevated | moved | renamed | kept | reorganised",
+      "label": "Short human-readable action label",
+      "notes": "One sentence explaining what changed and why"
+    }
+  ],
   "competitors": [
     {
       "name": "string",
       "domain": "string",
-      "type": "global|local|manual",
+      "type": "global | local | manual",
       "primary_nav_count": 0,
       "has_newsroom": true,
       "has_investors": true,
       "has_sustainability": true,
       "has_careers": true,
-      "portfolio_organization": "sector|geography|brand",
-      "nav_labels": ["string"],
-      "notable_pattern": "one sentence"
+      "portfolio_organization": "function | stage | geography | brand",
+      "ia_structure": "L1 nav items and major groupings described in one line",
+      "unique_adopted": "What unique pattern from this competitor was adopted, and where",
+      "unique_not_adopted": "What unique pattern was NOT adopted",
+      "notable_pattern": "One sentence explanation of the most interesting thing about their IA",
+      "findings": [
+        {
+          "pattern": "Short name of the pattern observed",
+          "adopted": "yes | partial | no",
+          "reason": "One sentence: why adopted or why not"
+        }
+      ]
     }
   ],
-  "best_practices_applied": ["string"],
-  "rationale": "2-3 sentences"
+  "best_practices_applied": ["string — specific rule applied, max 10"],
+  "rationale": "2-3 sentences explaining the overall IA strategy and the single most important problem it solves"
 }`;
 
   const userPrompt = `Analyse this company's existing website and propose a new information architecture.
