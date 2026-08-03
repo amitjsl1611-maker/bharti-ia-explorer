@@ -200,8 +200,9 @@ function renderResult(data) {
   // Show result state
   showState('state-result');
 
-  // Build the canvas via renderer.js
+  // Build the canvas via renderer.js — default to Sitemap mode like the prototype
   buildRenderer(data);
+  setMode('sitemap');
 
   // Show existing issues in rationale bar if present
   if (data.company?.existing_issues?.length) {
