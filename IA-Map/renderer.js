@@ -1008,70 +1008,120 @@ function buildCompetitorsPanel(iaData) {
   const rationaleEl = document.getElementById('csp-rationale');
   if (rationaleEl && iaData.rationale) rationaleEl.textContent = iaData.rationale;
 
+  // Update panel header title
+  const hdr = document.querySelector('.csp-header h3');
+  if (hdr) hdr.textContent = 'Analysis';
+
   const cards = document.getElementById('csp-cards');
-  if (!cards || !iaData.competitors || !iaData.competitors.length) return;
+  if (!cards) return;
 
-  // Enhanced tabbed view if competitors have ia_structure field
-  if (iaData.competitors[0].ia_structure !== undefined) {
-    const comps = iaData.competitors;
+  const comps = iaData.competitors || [];
+  const changes = iaData.ia_changes || [];
+  const company = iaData.company?.name || 'Site';
 
-    let html = `<div class="csp-tab-bar">` +
-      comps.map((c, i) =>
-        `<button class="csp-tab${i === 0 ? ' active' : ''}" data-tab="${i}">${c.name}</button>`
-      ).join('') +
-    `</div>`;
-
-    comps.forEach((c, i) => {
-      const type = (c.type || 'global').toLowerCase();
-      html += `
-      <div class="csp-panel${i === 0 ? ' active' : ''}" data-panel="${i}">
-        <div class="csp-comp-header">
-          <span class="csp-comp-name">${c.name}</span>
-          <span class="csp-badge ${type === 'local' ? 'local' : 'global'}">${type.toUpperCase()}</span>
-        </div>
-        <div class="csp-domain">${c.domain}</div>
-
-        <div class="csp-info-block">
-          <div class="csp-info-label">Their IA structure</div>
-          <div class="csp-info-text">${c.ia_structure}</div>
-        </div>
-
-        ${c.unique_adopted ? `
-        <div class="csp-info-block adopted">
-          <div class="csp-info-label">✓ Adopted into Mercury revamp</div>
-          <div class="csp-info-text">${c.unique_adopted}</div>
-        </div>` : ''}
-
-        ${c.unique_not_adopted ? `
-        <div class="csp-info-block not-adopted">
-          <div class="csp-info-label">✗ Unique — not adopted</div>
-          <div class="csp-info-text">${c.unique_not_adopted}</div>
-        </div>` : ''}
-
-        <div class="csp-info-block reason">
-          <div class="csp-info-label">Rationale</div>
-          <div class="csp-info-text">${c.notable_pattern}</div>
-        </div>
-      </div>`;
-    });
-
-    cards.innerHTML = html;
-
-    cards.querySelectorAll('.csp-tab').forEach(btn => {
-      btn.addEventListener('click', () => {
-        const idx = btn.dataset.tab;
-        cards.querySelectorAll('.csp-tab').forEach(t => t.classList.remove('active'));
-        cards.querySelectorAll('.csp-panel').forEach(p => p.classList.remove('active'));
-        btn.classList.add('active');
-        cards.querySelector(`.csp-panel[data-panel="${idx}"]`).classList.add('active');
-      });
-    });
-    return;
+  // Status pill helper
+  function statusPill(action) {
+    const map = {
+      added:    ['added',    '+ Added new'],
+      elevated: ['elevated', '↑ Elevated'],
+      moved:    ['moved',    '→ Moved'],
+      renamed:  ['renamed',  '✎ Renamed'],
+      kept:     ['kept',     '· Kept'],
+      reorganised: ['elevated', '⟳ Reorganised'],
+    };
+    const [cls, txt] = map[action] || ['kept', action];
+    return `<span class="csp-status ${cls}">${txt}</span>`;
   }
 
-  // Fallback: original card layout
-  cards.innerHTML = '';
-  iaData.competitors.forEach(c => {
+  // Adopted pill helper
+  function adoptedPill(val) {
+    if (val === 'yes')     return `<span class="csp-status yes">✓ Adopted</span>`;
+    if (val === 'partial') return `<span class="csp-status partial">~ Partial</span>`;
+    return `<span class="csp-status no">✗ Not adopted</span>`;
+  }
+
+  // Build tab bar: Changes first, then one tab per competitor
+  const tabBar = `<div class="csp-tab-bar">
+    <button class="csp-tab active" data-tab="changes">Changes</button>
+    ${comps.map(c => `<button class="csp-tab" data-tab="${c.name}">${c.name}</button>`).join('')}
+  </div>`;
+
+  // Changes panel
+  let changesRows = '';
+  if (changes.length) {
+    changes.forEach(row => {
+      changesRows += `<tr>
+        <td style="font-weight:700;color:#111;">${row.item}</td>
+        <td>${row.existed === 'Yes' ? '<span style="color:#1a7a3a;font-weight:700;">Yes</span>' : row.existed === 'No' ? '<span style="color:#c0392b;font-weight:700;">No</span>' : `<span style="color:#a06000;font-weight:700;">${row.existed}</span>`}</td>
+        <td>${statusPill(row.action)}</td>
+        <td style="color:#666;">${row.notes}</td>
+      </tr>`;
+    });
+  }
+  const changesPanel = `<div class="csp-panel active" data-panel="changes">
+    <div class="csp-section-label">What existed in ${company} · What changed</div>
+    <table class="csp-table">
+      <thead><tr>
+        <th style="width:28%">Nav item</th>
+        <th style="width:10%">Existed?</th>
+        <th style="width:16%">Action</th>
+        <th>Notes</th>
+      </tr></thead>
+      <tbody>${changesRows}</tbody>
+    </table>
+  </div>`;
+
+  // Competitor panels
+  let compPanels = '';
+  comps.forEach(c => {
+    const type = (c.type || 'global').toLowerCase();
+    const findings = c.findings || [];
+    let rows = '';
+    findings.forEach(f => {
+      rows += `<tr>
+        <td style="font-weight:600;color:#111;">${f.pattern}</td>
+        <td>${adoptedPill(f.adopted)}</td>
+        <td style="color:#666;">${f.reason}</td>
+      </tr>`;
+    });
+    compPanels += `<div class="csp-panel" data-panel="${c.name}">
+      <div class="csp-comp-header">
+        <span class="csp-comp-name">${c.name}</span>
+        <span class="csp-badge ${type}">${type.toUpperCase()}</span>
+        <span class="csp-domain">${c.domain}</span>
+      </div>
+      ${c.ia_structure ? `<div class="csp-section-label">Their IA structure</div>
+      <div style="font-size:12px;color:#555;line-height:1.6;padding-bottom:12px;border-bottom:1px solid #f0f0f0;">${c.ia_structure}</div>` : ''}
+      <div class="csp-section-label">What we picked (and didn't)</div>
+      <table class="csp-table">
+        <thead><tr>
+          <th style="width:38%">Pattern observed</th>
+          <th style="width:18%">Adopted?</th>
+          <th>Reason</th>
+        </tr></thead>
+        <tbody>${rows}</tbody>
+      </table>
+    </div>`;
+  });
+
+  cards.innerHTML = tabBar + changesPanel + compPanels;
+
+  // Tab switching
+  cards.querySelectorAll('.csp-tab').forEach(btn => {
+    btn.addEventListener('click', () => {
+      cards.querySelectorAll('.csp-tab').forEach(t => t.classList.remove('active'));
+      cards.querySelectorAll('.csp-panel').forEach(p => p.classList.remove('active'));
+      btn.classList.add('active');
+      const key = btn.dataset.tab;
+      const panel = cards.querySelector(`.csp-panel[data-panel="${key}"]`);
+      if (panel) panel.classList.add('active');
+    });
+  });
+
+  // Fallback legacy path (no findings/ia_changes) — original card layout
+  if (!changes.length && !comps.some(c => c.findings)) {
+    cards.innerHTML = '';
+    iaData.competitors.forEach(c => {
     const type = (c.type || 'global').toLowerCase();
     const badge = type === 'manual' ? 'manual' : type === 'local' ? 'local' : 'global';
     const check = '✓', cross = '–';
@@ -1095,7 +1145,8 @@ function buildCompetitorsPanel(iaData) {
         </div>
         ${c.notable_pattern ? `<div class="csp-notable">"${c.notable_pattern}"</div>` : ''}
       </div>`;
-  });
+    });
+  } // end legacy fallback
 }
 
 function toggleCompPanel() {
