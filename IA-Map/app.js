@@ -554,16 +554,11 @@ const MERCURY_DATA = {
   rationale: 'The revamped Mercury IA consolidates overlapping product groupings into a clean Platform section, elevates Developer tooling to match Mercury\'s API-first positioning, and fixes the core navigation problem: too many things buried in the wrong parent. Trust & Security and Support move to utility nav where users expect them. Solutions are segmented by Stage — matching how Mercury\'s founder-first users think about themselves, not by corporate role titles.',
 };
 
-/* ── Quick test: load mock data immediately if URL has ?mock ── */
-if (new URLSearchParams(window.location.search).has('mock')) {
-  setTimeout(() => {
-    renderResult(MOCK_DATA);
-  }, 300);
-}
-
-/* ── Mercury IA: load with ?mercury ── */
-if (new URLSearchParams(window.location.search).has('mercury')) {
-  setTimeout(() => {
-    renderResult(MERCURY_DATA);
-  }, 300);
-}
+/* ── Quick-load: skip input screen when ?mock or ?mercury is in URL ── */
+(function () {
+  const p = new URLSearchParams(window.location.search);
+  const data = p.has('mercury') ? MERCURY_DATA : p.has('mock') ? MOCK_DATA : null;
+  if (!data) return;
+  document.getElementById('state-input').classList.remove('active');
+  setTimeout(() => renderResult(data), 50);
+}());
