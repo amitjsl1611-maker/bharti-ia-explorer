@@ -394,7 +394,6 @@ function applyTransform(animated) {
   canvas.style.transform = `translate(${tx}px,${ty}px) scale(${sc})`;
   const zl = document.getElementById('zoom-label');
   if (zl) zl.textContent = Math.round(sc * 100) + '%';
-  updateMinimap();
 }
 
 function applyTransformSM() {
@@ -998,34 +997,6 @@ function backToSitemap() {
   setMode('sitemap');
 }
 
-/* ═══════════════════════════════════════════
-   MINIMAP
-═══════════════════════════════════════════ */
-function updateMinimap() {
-  const mm = document.getElementById('minimap');
-  if (!mm || !canvas) return;
-  const ctx = mm.getContext('2d');
-  const mmW = mm.width, mmH = mm.height;
-  ctx.clearRect(0, 0, mmW, mmH);
-  ctx.fillStyle = '#f4f4f6';
-  ctx.fillRect(0, 0, mmW, mmH);
-
-  const cw = parseFloat(canvas.style.width) || 22400;
-  const ch = parseFloat(canvas.style.height) || 2000;
-  const scaleX = mmW / cw, scaleY = mmH / ch;
-  const vpw = container.clientWidth || 1280, vph = container.clientHeight || 600;
-
-  const vx = (-tx / sc) * scaleX;
-  const vy = (-ty / sc) * scaleY;
-  const vw = (vpw / sc) * scaleX;
-  const vh = (vph / sc) * scaleY;
-
-  ctx.fillStyle = 'rgba(107,63,212,.18)';
-  ctx.fillRect(vx, vy, vw, vh);
-  ctx.strokeStyle = '#6B3FD4';
-  ctx.lineWidth = 1;
-  ctx.strokeRect(vx, vy, vw, vh);
-}
 
 /* ═══════════════════════════════════════════
    COMPETITORS PANEL
