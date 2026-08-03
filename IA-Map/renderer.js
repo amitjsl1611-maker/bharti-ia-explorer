@@ -1002,13 +1002,72 @@ function backToSitemap() {
    COMPETITORS PANEL
 ═══════════════════════════════════════════ */
 function buildCompetitorsPanel(iaData) {
-  const rationalEl = document.getElementById('csp-rationale');
-  if (rationalEl && iaData.rationale) rationalEl.textContent = iaData.rationale;
+  const rationaleEl = document.getElementById('csp-rationale');
+  if (rationaleEl && iaData.rationale) rationaleEl.textContent = iaData.rationale;
 
   const cards = document.getElementById('csp-cards');
-  if (!cards || !iaData.competitors) return;
-  cards.innerHTML = '';
+  if (!cards || !iaData.competitors || !iaData.competitors.length) return;
 
+  // Enhanced tabbed view if competitors have ia_structure field
+  if (iaData.competitors[0].ia_structure !== undefined) {
+    const comps = iaData.competitors;
+
+    let html = `<div class="csp-tab-bar">` +
+      comps.map((c, i) =>
+        `<button class="csp-tab${i === 0 ? ' active' : ''}" data-tab="${i}">${c.name}</button>`
+      ).join('') +
+    `</div>`;
+
+    comps.forEach((c, i) => {
+      const type = (c.type || 'global').toLowerCase();
+      html += `
+      <div class="csp-panel${i === 0 ? ' active' : ''}" data-panel="${i}">
+        <div class="csp-comp-header">
+          <span class="csp-comp-name">${c.name}</span>
+          <span class="csp-badge ${type === 'local' ? 'local' : 'global'}">${type.toUpperCase()}</span>
+        </div>
+        <div class="csp-domain">${c.domain}</div>
+
+        <div class="csp-info-block">
+          <div class="csp-info-label">Their IA structure</div>
+          <div class="csp-info-text">${c.ia_structure}</div>
+        </div>
+
+        ${c.unique_adopted ? `
+        <div class="csp-info-block adopted">
+          <div class="csp-info-label">✓ Adopted into Mercury revamp</div>
+          <div class="csp-info-text">${c.unique_adopted}</div>
+        </div>` : ''}
+
+        ${c.unique_not_adopted ? `
+        <div class="csp-info-block not-adopted">
+          <div class="csp-info-label">✗ Unique — not adopted</div>
+          <div class="csp-info-text">${c.unique_not_adopted}</div>
+        </div>` : ''}
+
+        <div class="csp-info-block reason">
+          <div class="csp-info-label">Rationale</div>
+          <div class="csp-info-text">${c.notable_pattern}</div>
+        </div>
+      </div>`;
+    });
+
+    cards.innerHTML = html;
+
+    cards.querySelectorAll('.csp-tab').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const idx = btn.dataset.tab;
+        cards.querySelectorAll('.csp-tab').forEach(t => t.classList.remove('active'));
+        cards.querySelectorAll('.csp-panel').forEach(p => p.classList.remove('active'));
+        btn.classList.add('active');
+        cards.querySelector(`.csp-panel[data-panel="${idx}"]`).classList.add('active');
+      });
+    });
+    return;
+  }
+
+  // Fallback: original card layout
+  cards.innerHTML = '';
   iaData.competitors.forEach(c => {
     const type = (c.type || 'global').toLowerCase();
     const badge = type === 'manual' ? 'manual' : type === 'local' ? 'local' : 'global';
