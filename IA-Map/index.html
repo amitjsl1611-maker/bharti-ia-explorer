@@ -108,10 +108,7 @@
   <!-- TOP BAR -->
   <div id="topbar">
     <div class="tb-left">
-      <button class="back-btn" onclick="goBack()" title="New analysis">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>
-        New
-      </button>
+      <span class="tb-nb">NETBRAMHA</span>
       <div class="tb-sep"></div>
       <div class="tb-brand">IA Map</div>
       <div class="tb-sep"></div>
@@ -124,17 +121,21 @@
     </div>
 
     <div class="tb-right">
-      <button class="comp-panel-btn" id="comp-panel-btn" onclick="toggleCompPanel()">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
-        Competitors
+      <button class="new-btn" id="new-btn" onclick="handleNew()">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+        New
       </button>
-      <div class="tb-sep"></div>
-      <span class="tb-nb">NETBRAMHA</span>
     </div>
   </div>
 
   <!-- ISLAND NAV -->
   <div id="island-nav"></div>
+
+  <!-- COMPETITORS FLOAT BTN — right-aligned, inline with island nav -->
+  <button id="comp-float-btn" class="comp-float-btn" onclick="toggleCompPanel()">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+    Competitors
+  </button>
 
   <!-- MAIN CANVAS -->
   <div id="container">
@@ -210,6 +211,25 @@
   <!-- BACK TO SITEMAP -->
   <div id="back-to-sm" class="back-to-sm" style="display:none;" onclick="backToSitemap()">← Back to Sitemap</div>
 
+</div>
+
+<!-- NEW IA MODAL -->
+<div id="new-modal" class="nm-overlay" style="display:none">
+  <div class="nm-box">
+    <div class="nm-icon">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+    </div>
+    <div class="nm-title">Current IA will be lost</div>
+    <div class="nm-body">Download a copy of the <strong id="nm-company">current</strong> IA before starting a new analysis.</div>
+    <div class="nm-actions">
+      <button class="nm-primary" onclick="downloadIA()">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+        Download IA
+      </button>
+      <button class="nm-tertiary" onclick="proceedAnyway()">Proceed anyway</button>
+    </div>
+    <button class="nm-close" onclick="closeNewModal()">✕</button>
+  </div>
 </div>
 
 <script src="renderer.js"></script>

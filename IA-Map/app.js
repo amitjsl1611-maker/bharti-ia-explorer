@@ -18,6 +18,8 @@ let competitorsPanelOpen = false;
 function showState(id) {
   document.querySelectorAll('.state').forEach(s => s.classList.remove('active'));
   document.getElementById(id).classList.add('active');
+  const floatBtn = document.getElementById('comp-float-btn');
+  if (floatBtn) floatBtn.style.display = id === 'state-result' ? 'flex' : 'none';
 }
 
 /* ═══════════════════════════════════════════
@@ -248,8 +250,51 @@ function goBack() {
   document.body.classList.remove('has-inav');
   const compPanel = document.getElementById('comp-side-panel');
   if (compPanel) compPanel.classList.remove('open');
-  const compBtn = document.getElementById('comp-panel-btn');
-  if (compBtn) compBtn.classList.remove('open');
+  const floatBtn = document.getElementById('comp-float-btn');
+  if (floatBtn) floatBtn.classList.remove('open');
+}
+
+/* ── New IA button ── */
+function handleNew() {
+  const nameEl = document.getElementById('tb-company-name');
+  const nm = document.getElementById('nm-company');
+  if (nm && nameEl) nm.textContent = nameEl.textContent || 'current';
+  document.getElementById('new-modal').style.display = 'flex';
+}
+
+function closeNewModal() {
+  document.getElementById('new-modal').style.display = 'none';
+}
+
+function downloadIA() {
+  // Export current SECTIONS data as formatted JSON
+  const payload = {
+    company: document.getElementById('tb-company-name')?.textContent || 'IA Export',
+    exported: new Date().toISOString(),
+    sections: typeof SECTIONS !== 'undefined' ? SECTIONS : [],
+  };
+  const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement('a');
+  a.href = url;
+  a.download = (payload.company.toLowerCase().replace(/\s+/g,'-')) + '-ia.json';
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+function proceedAnyway() {
+  closeNewModal();
+  goBack();
+}
+
+/* override toggleCompPanel to also toggle float btn state */
+const _origToggleCompPanel = typeof toggleCompPanel === 'function' ? toggleCompPanel : null;
+function toggleCompPanel() {
+  const panel = document.getElementById('comp-side-panel');
+  const floatBtn = document.getElementById('comp-float-btn');
+  if (!panel) return;
+  const isOpen = panel.classList.toggle('open');
+  if (floatBtn) floatBtn.classList.toggle('open', isOpen);
 }
 
 /* ═══════════════════════════════════════════
