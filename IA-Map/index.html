@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>IA Map — NetBramha</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+<!-- ═══════════════════════════════════════════════
+     STATE 1: INPUT
+════════════════════════════════════════════════ -->
+<div id="state-input" class="state active">
+  <div class="input-bg"></div>
+  <div class="input-wrap">
+
+    <div class="brand">
+      <div class="brand-mark">IA</div>
+      <div class="brand-text">
+        <span class="brand-name">IA Map</span>
+        <span class="brand-by">by NetBramha</span>
+      </div>
+    </div>
+
+    <h1 class="input-headline">Propose a better<br>information architecture.</h1>
+    <p class="input-sub">Enter any company URL. We'll scrape the site, benchmark against competitors, and generate a fully interactive proposed IA — in under a minute.</p>
+
+    <div class="input-card">
+      <label class="field-label">Company URL</label>
+      <div class="url-field-wrap">
+        <span class="url-icon">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
+        </span>
+        <input id="url-input" type="url" placeholder="https://company.com" autocomplete="off" spellcheck="false">
+      </div>
+      <div id="url-error" class="field-error"></div>
+
+      <!-- Competitor input -->
+      <div class="comp-section">
+        <button class="comp-toggle" id="comp-toggle" onclick="toggleCompetitors()">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          Add competitors manually <span class="comp-optional">optional</span>
+        </button>
+        <div id="comp-panel" class="comp-panel hidden">
+          <div class="comp-field-wrap">
+            <input id="comp-input" type="text" placeholder="competitor.com or Company Name" autocomplete="off">
+            <button class="comp-add-btn" onclick="addCompetitor()">Add</button>
+          </div>
+          <div id="comp-chips" class="comp-chips"></div>
+          <p class="comp-hint">Up to 6 competitors. We'll auto-identify more from industry context.</p>
+        </div>
+      </div>
+
+      <button id="generate-btn" class="generate-btn" onclick="startGenerate()">
+        Generate IA
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+      </button>
+    </div>
+
+    <div class="input-footer">
+      <span>Powered by Claude · Cloudflare Workers · NetBramha IA Framework</span>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════
+     STATE 2: LOADING
+════════════════════════════════════════════════ -->
+<div id="state-loading" class="state">
+  <div class="input-bg"></div>
+  <div class="loading-wrap">
+    <div class="loading-domain" id="loading-domain"></div>
+    <div class="loading-title">Analysing information architecture</div>
+    <div class="loading-steps" id="loading-steps">
+      <div class="lstep" id="ls-scrape">
+        <span class="lstep-icon spin">⟳</span>
+        <span class="lstep-text">Scraping <span id="ls-domain-name"></span>…</span>
+      </div>
+      <div class="lstep pending" id="ls-competitors">
+        <span class="lstep-icon">○</span>
+        <span class="lstep-text">Identifying competitors…</span>
+      </div>
+      <div class="lstep pending" id="ls-comp-scrape">
+        <span class="lstep-icon">○</span>
+        <span class="lstep-text">Scraping competitor sites…</span>
+      </div>
+      <div class="lstep pending" id="ls-synthesis">
+        <span class="lstep-icon">○</span>
+        <span class="lstep-text">Synthesising information architecture…</span>
+      </div>
+      <div class="lstep pending" id="ls-render">
+        <span class="lstep-icon">○</span>
+        <span class="lstep-text">Building interactive prototype…</span>
+      </div>
+    </div>
+    <div class="loading-eta">Estimated time: 20–45 seconds</div>
+    <div class="nb-wordmark">NetBramha</div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════
+     STATE 3: RESULT (IA EXPLORER)
+════════════════════════════════════════════════ -->
+<div id="state-result" class="state">
+
+  <!-- TOP BAR -->
+  <div id="topbar">
+    <div class="tb-left">
+      <button class="back-btn" onclick="goBack()" title="New analysis">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>
+        New
+      </button>
+      <div class="tb-sep"></div>
+      <div class="tb-brand">IA Map</div>
+      <div class="tb-sep"></div>
+      <div class="tb-company" id="tb-company-name">—</div>
+    </div>
+
+    <div class="tb-center">
+      <button class="mode-btn active" id="btn-ia" onclick="setMode('ia')">IA View</button>
+      <button class="mode-btn" id="btn-sm" onclick="setMode('sitemap')">Sitemap</button>
+    </div>
+
+    <div class="tb-right">
+      <button class="comp-panel-btn" id="comp-panel-btn" onclick="toggleCompPanel()">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+        Competitors
+      </button>
+      <div class="zoom-controls">
+        <button onclick="zoomIn()" title="Zoom in">+</button>
+        <button onclick="zoomOut()" title="Zoom out">−</button>
+        <button onclick="resetView()" title="Reset view">⊙</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ISLAND NAV -->
+  <div id="island-nav"></div>
+
+  <!-- MAIN CANVAS -->
+  <div id="container">
+    <div id="canvas">
+      <svg id="svg" style="position:absolute;top:0;left:0;overflow:visible;pointer-events:none;"></svg>
+    </div>
+    <!-- SITEMAP CANVAS -->
+    <div id="sm-canvas" style="display:none;position:absolute;top:0;left:0;">
+      <svg id="sm-svg" style="position:absolute;top:0;left:0;overflow:visible;pointer-events:none;"></svg>
+    </div>
+  </div>
+
+  <!-- TOUR BAR -->
+  <div id="tourbar">
+    <button class="tb-nav-btn" id="btn-prev" onclick="navigate(-1)">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+    </button>
+    <div id="tour-content">
+      <span id="bc-l1" class="bc-l1" onclick="goBackToL1()"></span>
+      <div id="tour-name">—</div>
+      <div id="tour-desc"></div>
+      <div id="tour-chips" class="tour-chips"></div>
+    </div>
+    <div class="tb-nav-group">
+      <span id="tour-counter">—</span>
+      <button class="tb-nav-btn" id="btn-next" onclick="navigate(1)">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+      </button>
+    </div>
+  </div>
+
+  <!-- LEGEND -->
+  <div id="legend">
+    <div class="leg-item"><span class="leg-dot" style="background:#F5B840"></span>Entry</div>
+    <div class="leg-item"><span class="leg-dot" style="background:#3D6B35"></span>Primary L1</div>
+    <div class="leg-item"><span class="leg-dot" style="background:#1A3A5C"></span>Utility L1</div>
+    <div class="leg-item"><span class="leg-dot" style="background:#1A4040"></span>L2</div>
+    <div class="leg-item"><span class="leg-dot" style="background:#333"></span>L3 Page</div>
+  </div>
+
+  <!-- MINIMAP -->
+  <div id="minimap-wrap">
+    <canvas id="minimap" width="180" height="50"></canvas>
+  </div>
+
+  <!-- COMPETITORS PANEL -->
+  <div id="comp-side-panel" class="comp-side-panel">
+    <div class="csp-header">
+      <h3>Competitor Analysis</h3>
+      <button onclick="toggleCompPanel()" class="csp-close">✕</button>
+    </div>
+    <div id="csp-rationale" class="csp-rationale"></div>
+    <div id="csp-cards" class="csp-cards"></div>
+  </div>
+
+  <!-- RATIONALE STRIP -->
+  <div id="rationale-bar" class="rationale-bar">
+    <div id="rationale-text"></div>
+  </div>
+
+</div>
+
+<script src="renderer.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
