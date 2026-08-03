@@ -372,8 +372,6 @@ const MOCK_DATA = {
 /* ── Quick test: load mock data immediately if URL has ?mock ── */
 if (new URLSearchParams(window.location.search).has('mock')) {
   setTimeout(() => {
-    document.getElementById('tb-company-name').textContent = MOCK_DATA.company.name;
-    showState('state-result');
-    buildRenderer(MOCK_DATA);
+    renderResult(MOCK_DATA);
   }, 300);
 }

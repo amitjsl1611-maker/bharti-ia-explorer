@@ -755,7 +755,7 @@ function updateBar(stop, l2) {
     bcEl.classList.add('visible');
     if (nameEl) nameEl.textContent = l2.name;
     if (descEl) descEl.textContent = (l2.info && l2.info[0]) ? l2.info[0] : '';
-    const chips = (l2.l3 || []).map(l3 => `<span class="chip l3-chip">${l3.name}</span>`).join('');
+    const chips = (l2.l3 || []).map(l3 => `<span class="tour-chip">${l3.name}</span>`).join('');
     if (chipsEl) chipsEl.innerHTML = chips;
   } else {
     bcEl.classList.remove('visible');
@@ -765,7 +765,7 @@ function updateBar(stop, l2) {
     const data = stop.data;
     if (!isSMMode && data && data.l2 && data.l2.length && l2Opened.has(data.id)) {
       const chips = data.l2.map((l2item, i) =>
-        `<span class="chip" onclick="focusL2('${data.id}',${i})">${l2item.name}</span>`
+        `<span class="tour-chip" onclick="focusL2('${data.id}',${i})">${l2item.name}</span>`
       ).join('');
       if (chipsEl) chipsEl.innerHTML = chips;
     } else {
@@ -802,6 +802,7 @@ function setMode(m) {
     smTy = vph / 2 - 280 * smSc;
     applyTransformSM();
     smSecIdx = 0; updateSmNavBtns(); syncIslandNav(null);
+    updateBar(mainStops[0], null);
     if (fromSecId) {
       const idx = SECTIONS.findIndex(s => s.id === fromSecId);
       if (idx >= 0) { smSecIdx = idx; focusSection(fromSecId); }
@@ -872,7 +873,7 @@ function buildSitemapCanvas() {
 
   // START pill
   const sp = smPill(companyName, 'pill-start', SM_SCX, SM_STY, 160, 30,
-    { bg: '#F5B840', color: '#1A1A1A', cursor: 'pointer' });
+    { cursor: 'pointer' });
   sp.style.fontSize = '11px';
   smLine(SM_SCX, SM_STY + 30, SM_SCX, SM_SPINE_Y);
 
@@ -889,8 +890,6 @@ function buildSitemapCanvas() {
 
     const l1cls = isUtil ? 'pill-l1 utility' : 'pill-l1';
     const l1p = smPill(sec.name, l1cls, cx, SM_L1_Y, SM_L1_PW, SM_L1_PH, {
-      bg: isUtil ? '#1A3A5C' : '#3D6B35',
-      color: '#fff',
       cursor: 'pointer',
     });
     l1p.onclick = () => { smSecIdx = idx; syncIslandNav(sec.id); updateBar(mainStops[idx + 1], null); smFlyTo(cx, SM_L1_Y_REF + 20, 1.0); };
@@ -902,7 +901,7 @@ function buildSitemapCanvas() {
     toggleBtn.className = 'sm-l2-toggle' + (isUtil ? ' utility' : '');
     toggleBtn.dataset.smsec = sec.id;
     toggleBtn.textContent = '+ Show pages';
-    toggleBtn.style.cssText = `position:absolute;left:${cx - 46}px;top:${SM_L1_Y + SM_L1_PH + 8}px;`;
+    toggleBtn.style.cssText = `left:${cx}px;top:${SM_L1_Y + SM_L1_PH + 8}px;transform:translateX(-50%);`;
     toggleBtn.onclick = e => { e.stopPropagation(); toggleSmL2(sec.id); };
     smCanvas.appendChild(toggleBtn);
 
@@ -932,8 +931,6 @@ function buildSitemapCanvas() {
       smPill(l2.name, l2cls, cx, l2Y, SM_L2_PW, SM_L2_PH, {
         hidden: true,
         cursor: 'pointer',
-        bg: isUtil ? '#1A3050' : '#1A4040',
-        color: '#fff',
         dataset: { smsec: sec.id, sml2idx: String(i) },
         onclick: e => { e.stopPropagation(); smL2Click(sec.id, i); },
       });

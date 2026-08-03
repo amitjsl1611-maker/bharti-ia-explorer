@@ -381,7 +381,7 @@ body.sitemap .ia-el{opacity:0;pointer-events:none;}
 
 /* MINIMAP */
 #minimap-wrap{
-  position:fixed;bottom:106px;right:20px;
+  position:fixed;bottom:130px;right:20px;
   background:rgba(255,255,255,.92);border-radius:8px;
   border:1px solid rgba(0,0,0,.1);padding:4px;
   z-index:190;box-shadow:0 2px 10px rgba(0,0,0,.08);
