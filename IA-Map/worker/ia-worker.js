@@ -39,22 +39,34 @@ export default {
       });
     }
 
+    // Guard: API key must be present
+    if (!env.ANTHROPIC_API_KEY) {
+      return new Response(JSON.stringify({ error: 'ANTHROPIC_API_KEY secret not configured in Cloudflare Worker settings.' }), {
+        status: 500, headers: { ...cors, 'Content-Type': 'application/json' },
+      });
+    }
+
+    let step = 'init';
     try {
       // Step 1 — Scrape target site
+      step = 'scrape-target';
       const targetData = await scrapeSite(url);
 
-      // Step 2 — Identify competitors
+      // Step 2 — Identify competitors (max 3 to keep total time under 55s)
+      step = 'identify-competitors';
       const competitors = await identifyCompetitors(url, targetData.title || url, competitors_manual, env);
 
-      // Step 3 — Scrape competitors in parallel
+      // Step 3 — Scrape competitors in parallel (cap at 3)
+      step = 'scrape-competitors';
       const competitorResults = await Promise.allSettled(
-        competitors.slice(0, 8).map(c => scrapeSite(`https://${c.domain}`).then(d => ({ ...d, meta: c })))
+        competitors.slice(0, 3).map(c => scrapeSite(`https://${c.domain}`).then(d => ({ ...d, meta: c })))
       );
       const competitorData = competitorResults
         .filter(r => r.status === 'fulfilled')
         .map(r => r.value);
 
       // Step 4 — AI synthesis
+      step = 'synthesise';
       const result = await synthesiseIA(targetData, competitorData, competitors, env);
 
       return new Response(JSON.stringify(result), {
@@ -62,8 +74,10 @@ export default {
       });
 
     } catch (err) {
-      console.error('Worker error:', err);
-      return new Response(JSON.stringify({ error: err.message || 'Analysis failed' }), {
+      console.error(`Worker error at step [${step}]:`, err);
+      return new Response(JSON.stringify({
+        error: `Step "${step}" failed: ${err.message || 'Unknown error'}`,
+      }), {
         status: 500, headers: { ...cors, 'Content-Type': 'application/json' },
       });
     }

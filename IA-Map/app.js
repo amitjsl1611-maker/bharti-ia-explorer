@@ -153,11 +153,15 @@ async function runPipeline(url, domain) {
   clearInterval(progressTimer);
 
   if (!response.ok) {
-    const text = await response.text();
-    if (response.status === 408 || text.includes('timeout')) {
-      throw new Error(`Could not reach ${domain}. Check the URL and try again.`);
+    let errMsg = 'Analysis failed.';
+    try {
+      const json = await response.json();
+      errMsg = json.error || errMsg;
+    } catch {
+      const text = await response.text();
+      errMsg = text.slice(0, 200) || errMsg;
     }
-    throw new Error('Analysis failed. Try again or check your connection.');
+    throw new Error(errMsg);
   }
 
   stepDone('ls-synthesis');
