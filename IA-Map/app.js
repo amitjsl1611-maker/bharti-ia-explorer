@@ -216,12 +216,13 @@ function showScrapeReady(domain, scraped) {
   div.innerHTML = `
     <div class="sr-check">✓</div>
     <div class="sr-text">Scraped <strong>${domain}</strong> and ${compCount} competitor${compCount !== 1 ? 's' : ''}.<br>Ready to generate the IA.</div>
-    <button class="sr-btn" onclick="handleGenerateIA()">Generate IA →</button>`;
+    <button class="sr-btn" id="sr-generate-btn">Generate IA →</button>`;
   if (etaEl) {
     etaEl.replaceWith(div);
   } else {
     target.appendChild(div);
   }
+  document.getElementById('sr-generate-btn').addEventListener('click', handleGenerateIA);
 }
 
 async function handleGenerateIA() {
