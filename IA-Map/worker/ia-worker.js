@@ -241,153 +241,57 @@ Return ONLY a JSON array, no other text:
    AI SYNTHESIS
 ═══════════════════════════════════════════ */
 async function synthesiseIA(targetData, competitorData, competitorMeta, env) {
-  const systemPrompt = `You are a senior information architect with 20 years of experience in corporate, B2B SaaS, fintech, and large enterprise websites.
+  const systemPrompt = `You are a senior information architect. Analyse a company website and propose a revamped IA.
 
-═══ IA BEST PRACTICE RULES (always apply) ═══
+RULES:
+- Primary nav: 4–6 items max. Label by visitor need, not internal org structure.
+- Utility nav: CONTACT, INVESTORS, CAREERS, TRUST, PRICING, SUPPORT (persistent shortcuts).
+- Use confident labels: SOLUTIONS, PLATFORM, NEWSROOM, WHO WE ARE — avoid "About Us", "Media Centre", "Offerings".
+- Surface: Contact (all B2B), Investors (listed entities), Trust/Security (fintech/data), Developer API (API-first cos), ESG (regulated cos).
+- Content hub must have named sub-types (reports, articles, events) — never a flat list.
 
-NAVIGATION STRUCTURE
-1. Primary nav: 4–6 items maximum. Beyond 6 creates cognitive overload.
-2. Utility nav (top-right or persistent strip): high-frequency destinations only — CONTACT, SEARCH, LOGIN, PRICING, TRUST, SUPPORT. These are shortcuts, not browse sections.
-3. Never organise primary nav by internal org chart. Users navigate by need, not by your org structure.
-4. Every L1 must answer: "What problem does this solve for the visitor?" If it can't, it belongs elsewhere.
-5. Capability/solution-first beats product-first for B2B: group by what you do for the buyer, not by what you sell.
+FAILURE PATTERNS to check: nav organised by internal BU names; Contact/Support buried; API buried 3+ levels; Trust not surfaced for fintech; AI flagship buried in Products; Investor Relations under About; Solutions dropdown with 10+ flat items.
 
-NAMING CONVENTIONS
-- Use: SOLUTIONS, PLATFORM, BUSINESSES, INSIGHTS, ABOUT, NEWSROOM, WHO WE ARE
-- Avoid: "About Us" (passive), "Our Companies" (internal), "Media Centre" (dated), "Offerings" (vague)
-- Utility: CONTACT, INVESTORS, CAREERS, TRUST, PRICING, SUPPORT (all caps)
-
-CONTENT HIERARCHY
-6. Contact must be in persistent nav for any B2B company — it is a CTA, not a footer link.
-7. Investor Relations must be max 1 click from homepage for any listed entity.
-8. Trust / Security must be surfaced for any fintech, financial services, or data company.
-9. Developer tools (API, SDK, docs) must be a top-level nav item for any API-first company.
-10. Careers must not be a rootless standalone L1 — it belongs under About or Company.
-11. ESG / Sustainability must be max 1 click from primary nav for any regulated or public-market company.
-12. A content hub (blog/research/insights) must have named sub-types (reports, articles, events, tools) — never a flat unstructured list.
-
-FAILURE PATTERNS (check each against the target site)
-F1. No capability/solution nav at L1 — services buried behind internal business unit names
-F2. Contact Us missing from primary nav
-F3. Help Center or Support buried inside About/Company dropdown
-F4. Developer API buried 3+ levels deep on an API-first product
-F5. Trust / Security / Compliance not surfaced for a financial services or data company
-F6. AI or flagship product feature buried inside a generic Products dropdown
-F7. Duplicate or conflicting URLs for the same content type (e.g. two press release paths)
-F8. Business unit names used as nav labels without describing what they do
-F9. Investor Relations buried under About or More From [Company]
-F10. Newsroom / Press buried under About — should be a named L2 at minimum
-F11. Foundation / CSR buried 3+ levels deep — signals ESG is not a priority
-F12. Solutions dropdown with 10+ flat items — needs segmentation (by stage, industry, or use case)
-
-═══ ANALYSIS FRAMEWORK ═══
-
-For each competitor you analyse, identify:
-- Their IA structure (L1 nav items, major groupings)
-- Unique patterns that work well
-- What you adopted into the proposed revamp and why
-- What you chose NOT to adopt and why (be specific about the reasoning)
-
-For the ia_changes table, document every significant nav item:
-- What existed in the current site (Yes / No / Partial)
-- What action was taken: "added" | "elevated" | "moved" | "renamed" | "kept" | "reorganised"
-- A concise note explaining why
-
-═══ OUTPUT FORMAT ═══
-
-Return ONLY valid JSON. No markdown fences, no explanation text, no preamble. Exact schema:
-
+Return ONLY valid JSON — no markdown, no preamble:
 {
-  "company": {
-    "name": "string",
-    "domain": "string",
-    "tagline": "string — their actual tagline or a descriptor",
-    "existing_issues": ["string — specific IA failure identified, max 8"]
-  },
+  "company": { "name":"","domain":"","tagline":"","existing_issues":["max 6 specific failures"] },
   "proposed_ia": {
-    "primary_nav": [
-      {
-        "id": "kebab-case-id",
-        "name": "L1 NAV LABEL IN CAPS",
-        "utility": false,
-        "desc": "One-line description of what this section is for",
-        "info": ["info bullet 1", "info bullet 2", "info bullet 3"],
-        "actions": ["Primary CTA", "Secondary CTA"],
-        "l2": [
-          {
-            "name": "Sub-section Name",
-            "desc": "One-line description",
-            "info": ["info bullet 1", "info bullet 2", "info bullet 3"],
-            "actions": ["action 1", "action 2"],
-            "l3": [{"name": "Page or sub-item Name"}]
-          }
-        ]
-      }
-    ],
-    "utility_nav": [
-      {
-        "id": "kebab-case-id",
-        "name": "UTILITY LABEL IN CAPS",
-        "utility": true,
-        "desc": "One-line description",
-        "info": ["info bullet 1", "info bullet 2"],
-        "actions": ["action 1"],
-        "l2": []
-      }
-    ]
+    "primary_nav": [{ "id":"","name":"CAPS","utility":false,"desc":"","info":["","",""],"actions":["",""],"l2":[{"name":"","desc":"","info":["",""],"actions":[""],"l3":[{"name":""}]}] }],
+    "utility_nav": [{ "id":"","name":"CAPS","utility":true,"desc":"","info":[""],"actions":[""],"l2":[] }]
   },
-  "ia_changes": [
-    {
-      "item": "NAV ITEM OR SECTION NAME",
-      "existed": "Yes | No | Partial",
-      "action": "added | elevated | moved | renamed | kept | reorganised",
-      "label": "Short human-readable action label",
-      "notes": "One sentence explaining what changed and why"
-    }
-  ],
-  "competitors": [
-    {
-      "name": "string",
-      "domain": "string",
-      "type": "global | local | manual",
-      "primary_nav_count": 0,
-      "has_newsroom": true,
-      "has_investors": true,
-      "has_sustainability": true,
-      "has_careers": true,
-      "portfolio_organization": "function | stage | geography | brand",
-      "ia_structure": "L1 nav items and major groupings described in one line",
-      "unique_adopted": "What unique pattern from this competitor was adopted, and where",
-      "unique_not_adopted": "What unique pattern was NOT adopted",
-      "notable_pattern": "One sentence explanation of the most interesting thing about their IA",
-      "findings": [
-        {
-          "pattern": "Short name of the pattern observed",
-          "adopted": "yes | partial | no",
-          "reason": "One sentence: why adopted or why not"
-        }
-      ]
-    }
-  ],
-  "best_practices_applied": ["string — specific rule applied, max 10"],
-  "rationale": "2-3 sentences explaining the overall IA strategy and the single most important problem it solves"
+  "ia_changes": [{ "item":"","existed":"Yes|No|Partial","action":"added|elevated|moved|renamed|kept|reorganised","label":"","notes":"" }],
+  "competitors": [{
+    "name":"","domain":"","type":"global|local","primary_nav_count":0,
+    "has_newsroom":true,"has_investors":true,"has_sustainability":true,"has_careers":true,
+    "portfolio_organization":"function|stage|geography|brand",
+    "ia_structure":"","notable_pattern":"",
+    "findings":[{"pattern":"","adopted":"yes|partial|no","reason":""}]
+  }],
+  "best_practices_applied":["max 6"],
+  "rationale":"2 sentences max"
 }`;
 
   const userPrompt = `Analyse this company's existing website and propose a new information architecture.
 
 TARGET COMPANY DATA:
-${JSON.stringify(targetData, null, 2)}
+${JSON.stringify({
+  domain: targetData.domain,
+  title: targetData.title,
+  nav: targetData.nav?.slice(0, 12),
+  structured_nav: targetData.structured_nav?.slice(0, 12),
+  sitemap_sample: targetData.sitemap_urls?.slice(0, 20),
+  footer_links: targetData.footer_links?.slice(0, 10),
+  page_count: targetData.page_count,
+}, null, 2)}
 
 COMPETITOR SITES DATA:
 ${JSON.stringify(competitorData.map(c => ({
   domain: c.domain,
   title: c.title,
-  meta: c.meta,
-  nav: c.nav?.slice(0, 10),
-  structured_nav: c.structured_nav?.slice(0, 10),
-  sitemap_sample: c.sitemap_urls?.slice(0, 15),
-  footer_links: c.footer_links?.slice(0, 10),
-  page_count: c.page_count,
+  nav: c.nav?.slice(0, 8),
+  structured_nav: c.structured_nav?.slice(0, 8),
+  sitemap_sample: c.sitemap_urls?.slice(0, 10),
+  footer_links: c.footer_links?.slice(0, 8),
 })), null, 2)}
 
 Based on:
@@ -401,7 +305,7 @@ Populate the competitors array with what you can infer from their scraped data.
 Return ONLY the JSON.`;
 
   const response = await callClaude(env, {
-    max_tokens: 6000,
+    max_tokens: 3500,
     system: systemPrompt,
     messages: [{ role: 'user', content: userPrompt }],
   });
@@ -427,10 +331,10 @@ async function callClaude(env, params) {
       'content-type': 'application/json',
     },
     body: JSON.stringify({
-      model: 'claude-sonnet-4-6',
+      model: 'claude-haiku-4-5-20251001',
       ...params,
     }),
-    signal: AbortSignal.timeout(55000), // under CF's 60s limit
+    signal: AbortSignal.timeout(25000), // CF free plan wall-clock ~30s
   });
 
   if (!res.ok) {
