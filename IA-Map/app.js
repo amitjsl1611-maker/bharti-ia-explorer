@@ -206,6 +206,7 @@ async function parseWorkerError(response) {
 function showScrapeReady(domain, scraped) {
   const compCount = (scraped.competitors || []).length;
   const el = document.getElementById('loading-eta');
+  if (!el) return;
   el.innerHTML = `
     <div class="scrape-ready">
       <div class="sr-check">✓</div>
