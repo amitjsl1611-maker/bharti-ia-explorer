@@ -226,6 +226,7 @@ async function identifyCompetitors(url, companyName, manualList, env) {
 
   try {
     const response = await callClaude(env, {
+      model: 'claude-sonnet-4-6',
       max_tokens: 400,
       messages: [{
         role: 'user',
@@ -346,7 +347,7 @@ async function callClaude(env, params) {
       'content-type': 'application/json',
     },
     body: JSON.stringify({
-      model: 'claude-haiku-4-5-20251001',
+      model: params.model || 'claude-haiku-4-5-20251001',
       ...params,
     }),
     signal: AbortSignal.timeout(25000), // CF free plan wall-clock ~30s
