@@ -100,8 +100,7 @@ async function startGenerate() {
   resetLoadingSteps();
 
   try {
-    const data = await runPipeline(url, domain);
-    renderResult(data);
+    await runPass1(url, domain);
   } catch (err) {
     console.error(err);
     showError(err.message || 'Analysis failed. Try again or check your connection.');
@@ -135,32 +134,55 @@ function stepDone(id) {
 }
 
 /* ═══════════════════════════════════════════
-   PIPELINE — single Worker call with SSE-style
-   progress simulation while awaiting response
+   TWO-PASS PIPELINE
+   Pass 1: scrape target + competitors (~15s)
+   Pass 2: Claude Sonnet synthesis (~20s)
 ═══════════════════════════════════════════ */
-async function runPipeline(url, domain) {
-  // Animate loading steps in sequence while request is in flight
-  stepActive('ls-scrape');
 
-  const progressTimer = simulateProgress();
+// Holds scraped data between passes
+let _scrapedCache = null;
+
+async function runPass1(url, domain) {
+  stepActive('ls-scrape');
+  simulatePass1Progress();
 
   const response = await fetch(WORKER_URL, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ url, competitors_manual: manualCompetitors }),
+    body: JSON.stringify({ action: 'scrape', url, competitors_manual: manualCompetitors }),
   });
 
-  clearInterval(progressTimer);
+  if (!response.ok) {
+    const errMsg = await parseWorkerError(response);
+    throw new Error(errMsg);
+  }
+
+  const data = await response.json();
+  _scrapedCache = data;
+
+  // Mark scraping steps done
+  stepDone('ls-scrape');
+  stepDone('ls-competitors');
+  stepDone('ls-comp-scrape');
+
+  // Show mid-point prompt in loading screen
+  showScrapeReady(domain, data);
+}
+
+async function runPass2() {
+  if (!_scrapedCache) return;
+  const { targetData, competitorData, competitors } = _scrapedCache;
+
+  stepActive('ls-synthesis');
+
+  const response = await fetch(WORKER_URL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ action: 'synthesise', targetData, competitorData, competitors }),
+  });
 
   if (!response.ok) {
-    let errMsg = 'Analysis failed.';
-    try {
-      const json = await response.json();
-      errMsg = json.error || errMsg;
-    } catch {
-      const text = await response.text();
-      errMsg = text.slice(0, 200) || errMsg;
-    }
+    const errMsg = await parseWorkerError(response);
     throw new Error(errMsg);
   }
 
@@ -168,25 +190,48 @@ async function runPipeline(url, domain) {
   stepActive('ls-render');
 
   const data = await response.json();
-  return data;
+  renderResult(data);
 }
 
-function simulateProgress() {
-  const steps = [
-    { id: 'ls-scrape',      delay: 0 },
-    { id: 'ls-competitors', delay: 4000 },
-    { id: 'ls-comp-scrape', delay: 9000 },
-    { id: 'ls-synthesis',   delay: 18000 },
+async function parseWorkerError(response) {
+  try {
+    const json = await response.json();
+    return json.error || 'Analysis failed.';
+  } catch {
+    const text = await response.text();
+    return text.slice(0, 200) || 'Analysis failed.';
+  }
+}
+
+function showScrapeReady(domain, scraped) {
+  const compCount = (scraped.competitors || []).length;
+  const el = document.getElementById('loading-eta');
+  el.innerHTML = `
+    <div class="scrape-ready">
+      <div class="sr-check">✓</div>
+      <div class="sr-text">Scraped <strong>${domain}</strong> and ${compCount} competitor${compCount !== 1 ? 's' : ''}.<br>Ready to generate the IA.</div>
+      <button class="sr-btn" onclick="handleGenerateIA()">Generate IA →</button>
+    </div>`;
+}
+
+async function handleGenerateIA() {
+  document.getElementById('loading-eta').innerHTML = 'Estimated time: 20–30 seconds';
+  try {
+    await runPass2();
+  } catch (err) {
+    console.error(err);
+    showError(err.message || 'IA generation failed. Try again.');
+  }
+}
+
+function simulatePass1Progress() {
+  const timings = [
+    { action: stepActive, id: 'ls-competitors', delay: 4000 },
+    { action: stepDone,   id: 'ls-scrape',      delay: 5000 },
+    { action: stepActive, id: 'ls-comp-scrape', delay: 5500 },
+    { action: stepDone,   id: 'ls-competitors', delay: 8000 },
   ];
-  const dones = [
-    { id: 'ls-scrape',      delay: 3500 },
-    { id: 'ls-competitors', delay: 8500 },
-    { id: 'ls-comp-scrape', delay: 17000 },
-  ];
-  steps.forEach(s  => setTimeout(() => stepActive(s.id),  s.delay));
-  dones.forEach(d  => setTimeout(() => stepDone(d.id),    d.delay));
-  // Return a fake handle (no actual interval)
-  return setInterval(() => {}, 99999);
+  timings.forEach(t => setTimeout(() => t.action(t.id), t.delay));
 }
 
 /* ═══════════════════════════════════════════

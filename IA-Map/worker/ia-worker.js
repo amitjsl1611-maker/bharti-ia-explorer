@@ -32,17 +32,35 @@ export default {
       });
     }
 
-    const { url, competitors_manual } = body;
-    if (!url) {
-      return new Response(JSON.stringify({ error: 'URL is required' }), {
-        status: 400, headers: { ...cors, 'Content-Type': 'application/json' },
+    const { action, url, competitors_manual, targetData: preScraped, competitorData: preCompetitors, competitors: preCompMeta } = body;
+
+    // Guard: API key must be present for synthesise
+    if ((action === 'synthesise' || !action) && !env.ANTHROPIC_API_KEY) {
+      return new Response(JSON.stringify({ error: 'ANTHROPIC_API_KEY secret not configured in Cloudflare Worker settings.' }), {
+        status: 500, headers: { ...cors, 'Content-Type': 'application/json' },
       });
     }
 
-    // Guard: API key must be present
-    if (!env.ANTHROPIC_API_KEY) {
-      return new Response(JSON.stringify({ error: 'ANTHROPIC_API_KEY secret not configured in Cloudflare Worker settings.' }), {
-        status: 500, headers: { ...cors, 'Content-Type': 'application/json' },
+    // ── PASS 2: synthesise only (pre-scraped data sent from frontend) ──
+    if (action === 'synthesise') {
+      let step = 'synthesise';
+      try {
+        const result = await synthesiseIA(preScraped, preCompetitors, preCompMeta, env);
+        return new Response(JSON.stringify(result), {
+          headers: { ...cors, 'Content-Type': 'application/json' },
+        });
+      } catch (err) {
+        console.error(`Worker error at step [${step}]:`, err);
+        return new Response(JSON.stringify({ error: `Step "${step}" failed: ${err.message || 'Unknown error'}` }), {
+          status: 500, headers: { ...cors, 'Content-Type': 'application/json' },
+        });
+      }
+    }
+
+    // ── PASS 1: scrape target + competitors ──
+    if (!url) {
+      return new Response(JSON.stringify({ error: 'URL is required' }), {
+        status: 400, headers: { ...cors, 'Content-Type': 'application/json' },
       });
     }
 
@@ -52,7 +70,7 @@ export default {
       step = 'scrape-target';
       const targetData = await scrapeSite(url);
 
-      // Step 2 — Identify competitors (max 3 to keep total time under 55s)
+      // Step 2 — Identify competitors (max 3)
       step = 'identify-competitors';
       const competitors = await identifyCompetitors(url, targetData.title || url, competitors_manual, env);
 
@@ -65,11 +83,8 @@ export default {
         .filter(r => r.status === 'fulfilled')
         .map(r => r.value);
 
-      // Step 4 — AI synthesis
-      step = 'synthesise';
-      const result = await synthesiseIA(targetData, competitorData, competitors, env);
-
-      return new Response(JSON.stringify(result), {
+      // Return scraped data for frontend to store; user triggers Pass 2
+      return new Response(JSON.stringify({ scraped: true, targetData, competitorData, competitors }), {
         headers: { ...cors, 'Content-Type': 'application/json' },
       });
 
@@ -305,7 +320,7 @@ Populate the competitors array with what you can infer from their scraped data.
 Return ONLY the JSON.`;
 
   const response = await callClaude(env, {
-    max_tokens: 3500,
+    max_tokens: 5000,
     system: systemPrompt,
     messages: [{ role: 'user', content: userPrompt }],
   });
@@ -331,7 +346,7 @@ async function callClaude(env, params) {
       'content-type': 'application/json',
     },
     body: JSON.stringify({
-      model: 'claude-haiku-4-5-20251001',
+      model: 'claude-sonnet-4-6',
       ...params,
     }),
     signal: AbortSignal.timeout(25000), // CF free plan wall-clock ~30s
