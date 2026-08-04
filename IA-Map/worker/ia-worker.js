@@ -346,7 +346,7 @@ async function callClaude(env, params) {
       'content-type': 'application/json',
     },
     body: JSON.stringify({
-      model: 'claude-sonnet-4-6',
+      model: 'claude-haiku-4-5-20251001',
       ...params,
     }),
     signal: AbortSignal.timeout(25000), // CF free plan wall-clock ~30s
