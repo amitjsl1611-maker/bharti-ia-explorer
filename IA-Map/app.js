@@ -171,14 +171,14 @@ async function runPass1(url, domain) {
 
 async function runPass2() {
   if (!_scrapedCache) return;
-  const { targetData, competitorData, competitors } = _scrapedCache;
+  const { targetData, competitorData } = _scrapedCache;
 
   stepActive('ls-synthesis');
 
   const response = await fetch(WORKER_URL, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ action: 'synthesise', targetData, competitorData, competitors }),
+    body: JSON.stringify({ action: 'synthesise', targetData, competitorData }),
   });
 
   if (!response.ok) {
@@ -191,6 +191,31 @@ async function runPass2() {
 
   const data = await response.json();
   renderResult(data);
+}
+
+async function runPass3() {
+  if (!_scrapedCache) return;
+  const { targetData, competitorData, competitors } = _scrapedCache;
+
+  const response = await fetch(WORKER_URL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ action: 'analyse', targetData, competitorData, competitors }),
+  });
+
+  if (!response.ok) {
+    const errMsg = await parseWorkerError(response);
+    throw new Error(errMsg);
+  }
+
+  const analysis = await response.json();
+  // Merge analysis into the current rendered data and refresh panel
+  if (window._currentIAData) {
+    window._currentIAData.ia_changes = analysis.ia_changes || [];
+    window._currentIAData.competitors = analysis.competitors || [];
+    window._currentIAData.best_practices_applied = analysis.best_practices_applied || [];
+    buildCompetitorsPanel(window._currentIAData);
+  }
 }
 
 async function parseWorkerError(response) {
@@ -251,6 +276,9 @@ function simulatePass1Progress() {
    RENDER RESULT
 ═══════════════════════════════════════════ */
 function renderResult(data) {
+  window._currentIAData = data;
+  _analysisLoaded = false;
+  _analysisLoading = false;
   stepDone('ls-render');
 
   // Populate topbar company name
@@ -349,7 +377,9 @@ function proceedAnyway() {
   goBack();
 }
 
-/* override toggleCompPanel to also toggle float btn state */
+/* override toggleCompPanel — triggers Pass 3 on first click if no analysis yet */
+let _analysisLoaded = false;
+let _analysisLoading = false;
 const _origToggleCompPanel = typeof toggleCompPanel === 'function' ? toggleCompPanel : null;
 function toggleCompPanel() {
   const panel = document.getElementById('comp-side-panel');
@@ -357,6 +387,19 @@ function toggleCompPanel() {
   if (!panel) return;
   const isOpen = panel.classList.toggle('open');
   if (floatBtn) floatBtn.classList.toggle('open', isOpen);
+
+  // Trigger Pass 3 on first open if live scrape data is available and not yet loaded
+  if (isOpen && !_analysisLoaded && !_analysisLoading && _scrapedCache) {
+    _analysisLoading = true;
+    const cardsEl = document.getElementById('csp-cards');
+    if (cardsEl) cardsEl.innerHTML = '<div style="padding:24px;color:#888;font-size:13px;">Generating analysis with Claude Sonnet…</div>';
+    runPass3()
+      .then(() => { _analysisLoaded = true; _analysisLoading = false; })
+      .catch(err => {
+        _analysisLoading = false;
+        if (cardsEl) cardsEl.innerHTML = `<div style="padding:24px;color:#c00;font-size:13px;">Analysis failed: ${err.message}</div>`;
+      });
+  }
 }
 
 /* ═══════════════════════════════════════════

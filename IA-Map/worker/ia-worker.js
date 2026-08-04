@@ -34,30 +34,41 @@ export default {
 
     const { action, url, competitors_manual, targetData: preScraped, competitorData: preCompetitors, competitors: preCompMeta } = body;
 
-    // Guard: API key must be present for synthesise
-    if ((action === 'synthesise' || !action) && !env.ANTHROPIC_API_KEY) {
-      return new Response(JSON.stringify({ error: 'ANTHROPIC_API_KEY secret not configured in Cloudflare Worker settings.' }), {
+    if (!env.ANTHROPIC_API_KEY) {
+      return new Response(JSON.stringify({ error: 'ANTHROPIC_API_KEY not configured.' }), {
         status: 500, headers: { ...cors, 'Content-Type': 'application/json' },
       });
     }
 
-    // ── PASS 2: synthesise only (pre-scraped data sent from frontend) ──
+    // ── PASS 2: generate IA structure only ──
     if (action === 'synthesise') {
-      let step = 'synthesise';
       try {
-        const result = await synthesiseIA(preScraped, preCompetitors, preCompMeta, env);
+        const result = await synthesiseIA(preScraped, preCompetitors, env);
         return new Response(JSON.stringify(result), {
           headers: { ...cors, 'Content-Type': 'application/json' },
         });
       } catch (err) {
-        console.error(`Worker error at step [${step}]:`, err);
-        return new Response(JSON.stringify({ error: `Step "${step}" failed: ${err.message || 'Unknown error'}` }), {
+        return new Response(JSON.stringify({ error: `Step "synthesise" failed: ${err.message}` }), {
           status: 500, headers: { ...cors, 'Content-Type': 'application/json' },
         });
       }
     }
 
-    // ── PASS 1: scrape target + competitors ──
+    // ── PASS 3: generate analysis (ia_changes + competitors + findings) ──
+    if (action === 'analyse') {
+      try {
+        const result = await analyseIA(preScraped, preCompetitors, preCompMeta, env);
+        return new Response(JSON.stringify(result), {
+          headers: { ...cors, 'Content-Type': 'application/json' },
+        });
+      } catch (err) {
+        return new Response(JSON.stringify({ error: `Step "analyse" failed: ${err.message}` }), {
+          status: 500, headers: { ...cors, 'Content-Type': 'application/json' },
+        });
+      }
+    }
+
+    // ── PASS 1: scrape target + identify + scrape competitors ──
     if (!url) {
       return new Response(JSON.stringify({ error: 'URL is required' }), {
         status: 400, headers: { ...cors, 'Content-Type': 'application/json' },
@@ -66,15 +77,12 @@ export default {
 
     let step = 'init';
     try {
-      // Step 1 — Scrape target site
       step = 'scrape-target';
       const targetData = await scrapeSite(url);
 
-      // Step 2 — Identify competitors (max 3)
       step = 'identify-competitors';
       const competitors = await identifyCompetitors(url, targetData.title || url, competitors_manual, env);
 
-      // Step 3 — Scrape competitors in parallel (cap at 3)
       step = 'scrape-competitors';
       const competitorResults = await Promise.allSettled(
         competitors.slice(0, 3).map(c => scrapeSite(`https://${c.domain}`).then(d => ({ ...d, meta: c })))
@@ -83,16 +91,12 @@ export default {
         .filter(r => r.status === 'fulfilled')
         .map(r => r.value);
 
-      // Return scraped data for frontend to store; user triggers Pass 2
       return new Response(JSON.stringify({ scraped: true, targetData, competitorData, competitors }), {
         headers: { ...cors, 'Content-Type': 'application/json' },
       });
 
     } catch (err) {
-      console.error(`Worker error at step [${step}]:`, err);
-      return new Response(JSON.stringify({
-        error: `Step "${step}" failed: ${err.message || 'Unknown error'}`,
-      }), {
+      return new Response(JSON.stringify({ error: `Step "${step}" failed: ${err.message}` }), {
         status: 500, headers: { ...cors, 'Content-Type': 'application/json' },
       });
     }
@@ -254,61 +258,63 @@ Return ONLY a JSON array, no other text:
 }
 
 /* ═══════════════════════════════════════════
-   AI SYNTHESIS
+   PASS 2 — IA STRUCTURE ONLY
 ═══════════════════════════════════════════ */
-async function synthesiseIA(targetData, competitorData, competitorMeta, env) {
-  const systemPrompt = `You are a senior IA expert. Propose a revamped website IA from scraped data.
+async function synthesiseIA(targetData, competitorData, env) {
+  const system = `You are a senior IA expert. Propose a revamped website IA from scraped nav/sitemap data.
+Rules: 4-5 primary nav items max, labelled by visitor need. Utility nav: CONTACT, INVESTORS, CAREERS, TRUST. Use NEWSROOM not "Media Centre", WHO WE ARE not "About Us". Surface Trust/Security for fintech, Investors for listed entities, API nav for API-first products.
+Return ONLY valid JSON, no markdown, no explanation:
+{"company":{"name":"","domain":"","tagline":"","existing_issues":["max 4"]},"proposed_ia":{"primary_nav":[{"id":"","name":"CAPS","utility":false,"desc":"","info":["","",""],"actions":["",""],"l2":[{"name":"","desc":"","info":["",""],"actions":[""],"l3":[{"name":""}]}]}],"utility_nav":[{"id":"","name":"CAPS","utility":true,"desc":"","info":[""],"actions":[""],"l2":[]}]},"best_practices_applied":["max 4"],"rationale":"1-2 sentences"}`;
 
-RULES: Primary nav 4-5 items max, labelled by visitor need not org structure. Utility nav for CONTACT/INVESTORS/CAREERS/TRUST. Use NEWSROOM not "Media Centre", WHO WE ARE not "About Us". Surface Trust for fintech, Investors for listed entities, API for API-first companies.
+  const user = `TARGET:
+${JSON.stringify({ domain: targetData.domain, title: targetData.title, nav: targetData.nav?.slice(0,12), structured_nav: targetData.structured_nav?.slice(0,12), sitemap_sample: targetData.sitemap_urls?.slice(0,20), footer_links: targetData.footer_links?.slice(0,10) })}
 
-Return ONLY compact valid JSON, no markdown:
-{
-  "company":{"name":"","domain":"","tagline":"","existing_issues":["3-4 key failures only"]},
-  "proposed_ia":{
-    "primary_nav":[{"id":"","name":"CAPS","utility":false,"desc":"","info":["",""],"actions":[""],"l2":[{"name":"","desc":"","l3":[{"name":""}]}]}],
-    "utility_nav":[{"id":"","name":"CAPS","utility":true,"desc":"","info":[""],"actions":[""],"l2":[]}]
-  },
-  "ia_changes":[{"item":"","existed":"Yes|No","action":"added|elevated|moved|renamed|kept","label":"","notes":""}],
-  "competitors":[{"name":"","domain":"","type":"global|local","primary_nav_count":0,"has_newsroom":true,"has_investors":true,"has_sustainability":true,"has_careers":true,"portfolio_organization":"","notable_pattern":"","findings":[{"pattern":"","adopted":"yes|no","reason":""}]}],
-  "best_practices_applied":["3-4 only"],
-  "rationale":"1 sentence"
-}`;
+COMPETITORS (for context only):
+${JSON.stringify(competitorData.map(c => ({ domain: c.domain, nav: c.nav?.slice(0,8), structured_nav: c.structured_nav?.slice(0,8) })))}
 
-  const userPrompt = `Analyse this company's existing website and propose a new information architecture.
-
-TARGET COMPANY DATA:
-${JSON.stringify({
-  domain: targetData.domain,
-  title: targetData.title,
-  nav: targetData.nav?.slice(0, 12),
-  structured_nav: targetData.structured_nav?.slice(0, 12),
-  sitemap_sample: targetData.sitemap_urls?.slice(0, 20),
-  footer_links: targetData.footer_links?.slice(0, 10),
-  page_count: targetData.page_count,
-}, null, 2)}
-
-COMPETITOR SITES DATA:
-${JSON.stringify(competitorData.map(c => ({
-  domain: c.domain,
-  title: c.title,
-  nav: c.nav?.slice(0, 8),
-  structured_nav: c.structured_nav?.slice(0, 8),
-  sitemap_sample: c.sitemap_urls?.slice(0, 10),
-  footer_links: c.footer_links?.slice(0, 8),
-})), null, 2)}
-
-Propose a revamped IA. Keep it compact: max 5 primary nav items, max 4 L2 per item, max 3 L3 per L2, max 3 competitors with max 3 findings each, max 6 ia_changes rows. Return ONLY the JSON.`;
+Propose revamped IA. Max 5 primary nav, max 4 L2 each, max 3 L3 each. Return ONLY the JSON.`;
 
   const response = await callClaude(env, {
-    max_tokens: 2000,
-    system: systemPrompt,
-    messages: [{ role: 'user', content: userPrompt }],
+    model: 'claude-sonnet-4-6',
+    max_tokens: 2500,
+    system,
+    messages: [{ role: 'user', content: user }],
   });
 
   const text = response.content[0].text;
   const cleaned = text.replace(/```json|```/g, '').trim();
   const jsonMatch = cleaned.match(/\{[\s\S]*\}/);
   if (!jsonMatch) throw new Error('AI returned invalid JSON structure');
+  return JSON.parse(jsonMatch[0]);
+}
+
+/* ═══════════════════════════════════════════
+   PASS 3 — ANALYSIS ONLY
+═══════════════════════════════════════════ */
+async function analyseIA(targetData, competitorData, competitorMeta, env) {
+  const system = `You are a senior IA expert. Analyse what changed between an existing website IA and a proposed revamp, and benchmark against competitors.
+Return ONLY valid JSON, no markdown:
+{"ia_changes":[{"item":"","existed":"Yes|No|Partial","action":"added|elevated|moved|renamed|kept|reorganised","label":"","notes":""}],"competitors":[{"name":"","domain":"","type":"global|local","primary_nav_count":0,"has_newsroom":true,"has_investors":true,"has_sustainability":true,"has_careers":true,"portfolio_organization":"","ia_structure":"","notable_pattern":"","findings":[{"pattern":"","adopted":"yes|partial|no","reason":""}]}],"best_practices_applied":["max 6"]}`;
+
+  const user = `TARGET SITE:
+${JSON.stringify({ domain: targetData.domain, title: targetData.title, nav: targetData.nav?.slice(0,12), structured_nav: targetData.structured_nav?.slice(0,12), sitemap_sample: targetData.sitemap_urls?.slice(0,20), footer_links: targetData.footer_links?.slice(0,10) })}
+
+COMPETITOR SITES:
+${JSON.stringify(competitorData.map(c => ({ domain: c.domain, title: c.title, nav: c.nav?.slice(0,10), structured_nav: c.structured_nav?.slice(0,10), sitemap_sample: c.sitemap_urls?.slice(0,12), footer_links: c.footer_links?.slice(0,8), meta: c.meta })))}
+
+Generate: (1) ia_changes — what existed vs what changed in the revamp, max 12 rows. (2) competitors — one entry per competitor with 3-4 findings each on what was adopted or not. Return ONLY the JSON.`;
+
+  const response = await callClaude(env, {
+    model: 'claude-sonnet-4-6',
+    max_tokens: 2500,
+    system,
+    messages: [{ role: 'user', content: user }],
+  });
+
+  const text = response.content[0].text;
+  const cleaned = text.replace(/```json|```/g, '').trim();
+  const jsonMatch = cleaned.match(/\{[\s\S]*\}/);
+  if (!jsonMatch) throw new Error('AI returned invalid JSON for analysis');
   return JSON.parse(jsonMatch[0]);
 }
 
