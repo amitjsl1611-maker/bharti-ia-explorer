@@ -275,8 +275,8 @@ ${JSON.stringify(competitorData.map(c => ({ domain: c.domain, nav: c.nav?.slice(
 Propose revamped IA. Max 5 primary nav, max 4 L2 each, max 3 L3 each. Return ONLY the JSON.`;
 
   const response = await callClaude(env, {
-    model: 'claude-sonnet-4-6',
-    max_tokens: 2500,
+    model: 'claude-haiku-4-5-20251001',
+    max_tokens: 2000,
     system,
     messages: [{ role: 'user', content: user }],
   });
