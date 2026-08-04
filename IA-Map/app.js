@@ -403,10 +403,34 @@ const MOCK_DATA = {
     ],
   },
   competitors: [
-    { name: 'Tata Group', domain: 'tata.com', type: 'global', primary_nav_count: 5, has_newsroom: true,  has_investors: true,  has_sustainability: true,  has_careers: true,  portfolio_organization: 'sector', notable_pattern: 'Tata Stories editorial format gives the newsroom a strong brand identity distinct from a press release feed.' },
-    { name: 'Mahindra',   domain: 'mahindra.com', type: 'global', primary_nav_count: 6, has_newsroom: true,  has_investors: true,  has_sustainability: true,  has_careers: true,  portfolio_organization: 'sector', notable_pattern: 'Rise philosophy integrated into every section, not siloed to a sustainability page.' },
-    { name: 'OTB Group',  domain: 'otb.net',  type: 'global', primary_nav_count: 5, has_newsroom: true,  has_investors: false, has_sustainability: true,  has_careers: true,  portfolio_organization: 'brand',  notable_pattern: 'Sustainability is top-level, signalling ESG is a strategic priority not an afterthought.' },
-    { name: 'Aldar',      domain: 'aldar.com', type: 'local', primary_nav_count: 6, has_newsroom: true,  has_investors: true,  has_sustainability: true,  has_careers: true,  portfolio_organization: 'sector', notable_pattern: 'Clear separation of retail and institutional investor journeys from the homepage.' },
+    { name: 'Tata Group', domain: 'tata.com', type: 'global', primary_nav_count: 5, has_newsroom: true,  has_investors: true,  has_sustainability: true,  has_careers: true,  portfolio_organization: 'sector', notable_pattern: 'Tata Stories editorial format gives the newsroom a strong brand identity distinct from a press release feed.',
+      findings: [
+        { pattern: 'Tata Stories editorial newsroom', adopted: 'yes', reason: 'Adopted as NEWSROOM with editorial permalink format — same principle, own brand voice.' },
+        { pattern: 'Sector-based portfolio nav', adopted: 'yes', reason: 'OUR BUSINESSES organises by sector, matching Tata\'s proven wayfinding model.' },
+        { pattern: 'Tata Sustainability standalone page', adopted: 'partial', reason: 'IMPACT elevated to primary nav, but structured differently — purpose-led rather than report-driven.' },
+      ],
+    },
+    { name: 'Mahindra',   domain: 'mahindra.com', type: 'global', primary_nav_count: 6, has_newsroom: true,  has_investors: true,  has_sustainability: true,  has_careers: true,  portfolio_organization: 'sector', notable_pattern: 'Rise philosophy integrated into every section, not siloed to a sustainability page.',
+      findings: [
+        { pattern: 'Rise philosophy woven across all sections', adopted: 'partial', reason: 'Brand philosophy integration is a direction for content strategy, not replicated structurally in this IA.' },
+        { pattern: 'Investor Relations in utility nav', adopted: 'yes', reason: 'Adopted — INVESTORS moved to utility nav for persistent access, exactly as Mahindra does.' },
+        { pattern: 'Careers always visible in header', adopted: 'yes', reason: 'CAREERS in utility nav mirrors Mahindra\'s persistent talent-acquisition placement.' },
+      ],
+    },
+    { name: 'OTB Group',  domain: 'otb.net',  type: 'global', primary_nav_count: 5, has_newsroom: true,  has_investors: false, has_sustainability: true,  has_careers: true,  portfolio_organization: 'brand',  notable_pattern: 'Sustainability is top-level, signalling ESG is a strategic priority not an afterthought.',
+      findings: [
+        { pattern: 'Sustainability as top-level nav item', adopted: 'yes', reason: 'IMPACT elevated to primary nav — directly inspired by OTB\'s ESG-first positioning.' },
+        { pattern: 'Brand-based portfolio organisation', adopted: 'no', reason: 'Sector organisation chosen instead — more relevant for a diversified conglomerate than a brand house.' },
+        { pattern: 'No dedicated Investors section', adopted: 'no', reason: 'Investors is a required section for a listed group — OTB\'s omission is not appropriate to replicate.' },
+      ],
+    },
+    { name: 'Aldar',      domain: 'aldar.com', type: 'local', primary_nav_count: 6, has_newsroom: true,  has_investors: true,  has_sustainability: true,  has_careers: true,  portfolio_organization: 'sector', notable_pattern: 'Clear separation of retail and institutional investor journeys from the homepage.',
+      findings: [
+        { pattern: 'Dual investor journey split (retail vs institutional)', adopted: 'no', reason: 'Not applicable — group investor relations primarily targets institutional and analyst audiences.' },
+        { pattern: 'Newsroom as distinct top-level section', adopted: 'yes', reason: 'NEWSROOM adopted — Aldar validates that editorial framing works even for non-media companies.' },
+        { pattern: 'Sector portfolio wayfinding', adopted: 'yes', reason: 'Sector-first portfolio organisation adopted, consistent with Aldar\'s approach.' },
+      ],
+    },
   ],
   best_practices_applied: [
     'Portfolio organised by sector, not geography',
@@ -416,6 +440,15 @@ const MOCK_DATA = {
     'Utility nav: INVESTORS, CAREERS, CONTACT — all one click from anywhere',
   ],
   rationale: 'The proposed IA consolidates a fragmented existing structure into five clear primary sections mirroring the group\'s identity, portfolio, footprint, purpose and voice. The utility nav ensures investor and talent journeys are never more than one click away.',
+  ia_changes: [
+    { item: 'About Us', existed: 'yes', action: 'renamed', label: 'WHO WE ARE', notes: 'Confident identity framing; same content, stronger positioning.' },
+    { item: 'Media Centre', existed: 'yes', action: 'renamed', label: 'NEWSROOM', notes: 'Editorial framing with permalink articles replaces static press-release list.' },
+    { item: 'Sustainability', existed: 'yes', action: 'elevated', label: 'IMPACT', notes: 'Moved from sub-section to primary nav — ESG is a strategic pillar, not a footnote.' },
+    { item: 'Investors', existed: 'yes', action: 'moved', label: 'INVESTORS (utility)', notes: 'Moved to utility nav for persistent one-click access from all pages.' },
+    { item: 'Careers', existed: 'yes', action: 'moved', label: 'CAREERS (utility)', notes: 'Moved to utility nav — talent acquisition benefits from always-visible placement.' },
+    { item: 'Portfolio', existed: 'yes', action: 'reorganised', label: 'OUR BUSINESSES', notes: 'Reorganised by sector instead of geography; clearer mental model for site visitors.' },
+    { item: 'Contact', existed: 'yes', action: 'moved', label: 'CONTACT (utility)', notes: 'Persisted in utility nav so it is always reachable.' },
+  ],
 };
 
 /* ── Mercury IA data — load with ?mercury ── */

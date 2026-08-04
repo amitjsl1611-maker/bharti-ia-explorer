@@ -204,18 +204,19 @@ async function identifyCompetitors(url, companyName, manualList, env) {
     type: 'manual',
   }));
 
-  if (manual.length >= 8) return manual.slice(0, 8);
+  const MAX_COMP = 3;
+  if (manual.length >= MAX_COMP) return manual.slice(0, MAX_COMP);
 
-  const needed = 8 - manual.length;
+  const needed = MAX_COMP - manual.length;
 
   try {
     const response = await callClaude(env, {
-      max_tokens: 600,
+      max_tokens: 400,
       messages: [{
         role: 'user',
         content: `Company: "${companyName}" (URL: ${url})
 
-Identify ${needed} competitors for IA benchmarking — a mix of global conglomerates, regional peers, and companies known for best-in-class corporate websites.
+Identify exactly ${needed} competitor(s) for IA benchmarking. Pick companies known for best-in-class website IA in the same industry — mix of global and regional peers.
 
 Return ONLY a JSON array, no other text:
 [{"name": "Company Name", "domain": "domain.com", "type": "global|local"}]`,
@@ -227,7 +228,7 @@ Return ONLY a JSON array, no other text:
     const jsonMatch = cleaned.match(/\[[\s\S]*\]/);
     if (jsonMatch) {
       const auto = JSON.parse(jsonMatch[0]);
-      return [...manual, ...auto].slice(0, 8);
+      return [...manual, ...auto].slice(0, MAX_COMP);
     }
   } catch (e) {
     console.error('Competitor identification failed:', e);
@@ -382,10 +383,10 @@ ${JSON.stringify(competitorData.map(c => ({
   domain: c.domain,
   title: c.title,
   meta: c.meta,
-  nav: c.nav?.slice(0, 15),
-  structured_nav: c.structured_nav?.slice(0, 15),
-  sitemap_sample: c.sitemap_urls?.slice(0, 30),
-  footer_links: c.footer_links?.slice(0, 15),
+  nav: c.nav?.slice(0, 10),
+  structured_nav: c.structured_nav?.slice(0, 10),
+  sitemap_sample: c.sitemap_urls?.slice(0, 15),
+  footer_links: c.footer_links?.slice(0, 10),
   page_count: c.page_count,
 })), null, 2)}
 
