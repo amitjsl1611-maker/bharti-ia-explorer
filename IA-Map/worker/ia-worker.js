@@ -257,34 +257,21 @@ Return ONLY a JSON array, no other text:
    AI SYNTHESIS
 ═══════════════════════════════════════════ */
 async function synthesiseIA(targetData, competitorData, competitorMeta, env) {
-  const systemPrompt = `You are a senior information architect. Analyse a company website and propose a revamped IA.
+  const systemPrompt = `You are a senior IA expert. Propose a revamped website IA from scraped data.
 
-RULES:
-- Primary nav: 4–6 items max. Label by visitor need, not internal org structure.
-- Utility nav: CONTACT, INVESTORS, CAREERS, TRUST, PRICING, SUPPORT (persistent shortcuts).
-- Use confident labels: SOLUTIONS, PLATFORM, NEWSROOM, WHO WE ARE — avoid "About Us", "Media Centre", "Offerings".
-- Surface: Contact (all B2B), Investors (listed entities), Trust/Security (fintech/data), Developer API (API-first cos), ESG (regulated cos).
-- Content hub must have named sub-types (reports, articles, events) — never a flat list.
+RULES: Primary nav 4-5 items max, labelled by visitor need not org structure. Utility nav for CONTACT/INVESTORS/CAREERS/TRUST. Use NEWSROOM not "Media Centre", WHO WE ARE not "About Us". Surface Trust for fintech, Investors for listed entities, API for API-first companies.
 
-FAILURE PATTERNS to check: nav organised by internal BU names; Contact/Support buried; API buried 3+ levels; Trust not surfaced for fintech; AI flagship buried in Products; Investor Relations under About; Solutions dropdown with 10+ flat items.
-
-Return ONLY valid JSON — no markdown, no preamble:
+Return ONLY compact valid JSON, no markdown:
 {
-  "company": { "name":"","domain":"","tagline":"","existing_issues":["max 6 specific failures"] },
-  "proposed_ia": {
-    "primary_nav": [{ "id":"","name":"CAPS","utility":false,"desc":"","info":["","",""],"actions":["",""],"l2":[{"name":"","desc":"","info":["",""],"actions":[""],"l3":[{"name":""}]}] }],
-    "utility_nav": [{ "id":"","name":"CAPS","utility":true,"desc":"","info":[""],"actions":[""],"l2":[] }]
+  "company":{"name":"","domain":"","tagline":"","existing_issues":["3-4 key failures only"]},
+  "proposed_ia":{
+    "primary_nav":[{"id":"","name":"CAPS","utility":false,"desc":"","info":["",""],"actions":[""],"l2":[{"name":"","desc":"","l3":[{"name":""}]}]}],
+    "utility_nav":[{"id":"","name":"CAPS","utility":true,"desc":"","info":[""],"actions":[""],"l2":[]}]
   },
-  "ia_changes": [{ "item":"","existed":"Yes|No|Partial","action":"added|elevated|moved|renamed|kept|reorganised","label":"","notes":"" }],
-  "competitors": [{
-    "name":"","domain":"","type":"global|local","primary_nav_count":0,
-    "has_newsroom":true,"has_investors":true,"has_sustainability":true,"has_careers":true,
-    "portfolio_organization":"function|stage|geography|brand",
-    "ia_structure":"","notable_pattern":"",
-    "findings":[{"pattern":"","adopted":"yes|partial|no","reason":""}]
-  }],
-  "best_practices_applied":["max 6"],
-  "rationale":"2 sentences max"
+  "ia_changes":[{"item":"","existed":"Yes|No","action":"added|elevated|moved|renamed|kept","label":"","notes":""}],
+  "competitors":[{"name":"","domain":"","type":"global|local","primary_nav_count":0,"has_newsroom":true,"has_investors":true,"has_sustainability":true,"has_careers":true,"portfolio_organization":"","notable_pattern":"","findings":[{"pattern":"","adopted":"yes|no","reason":""}]}],
+  "best_practices_applied":["3-4 only"],
+  "rationale":"1 sentence"
 }`;
 
   const userPrompt = `Analyse this company's existing website and propose a new information architecture.
@@ -310,18 +297,10 @@ ${JSON.stringify(competitorData.map(c => ({
   footer_links: c.footer_links?.slice(0, 8),
 })), null, 2)}
 
-Based on:
-1. What exists on the current site (identify gaps and failure patterns from the 12-point list)
-2. What the best competitors are doing
-3. IA best practice rules above
-4. The standard expected for a company of this type and scale
-
-Propose a complete new IA. For each L2 page, provide 2-3 INFORMATION items and 1-2 ACTIONS.
-Populate the competitors array with what you can infer from their scraped data.
-Return ONLY the JSON.`;
+Propose a revamped IA. Keep it compact: max 5 primary nav items, max 4 L2 per item, max 3 L3 per L2, max 3 competitors with max 3 findings each, max 6 ia_changes rows. Return ONLY the JSON.`;
 
   const response = await callClaude(env, {
-    max_tokens: 5000,
+    max_tokens: 2000,
     system: systemPrompt,
     messages: [{ role: 'user', content: userPrompt }],
   });
@@ -350,7 +329,7 @@ async function callClaude(env, params) {
       model: params.model || 'claude-haiku-4-5-20251001',
       ...params,
     }),
-    signal: AbortSignal.timeout(25000), // CF free plan wall-clock ~30s
+    signal: AbortSignal.timeout(25000),
   });
 
   if (!res.ok) {
