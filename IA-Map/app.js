@@ -226,7 +226,9 @@ function showScrapeReady(domain, scraped) {
 }
 
 async function handleGenerateIA() {
-  document.getElementById('loading-eta').innerHTML = 'Estimated time: 20–30 seconds';
+  // Replace the scrape-ready prompt with a progress indicator
+  const srDiv = document.querySelector('.scrape-ready');
+  if (srDiv) srDiv.innerHTML = '<div style="font-size:13px;color:#888;margin-top:8px;">Generating IA with Claude Sonnet…</div>';
   try {
     await runPass2();
   } catch (err) {
