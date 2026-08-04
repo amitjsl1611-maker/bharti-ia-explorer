@@ -205,14 +205,23 @@ async function parseWorkerError(response) {
 
 function showScrapeReady(domain, scraped) {
   const compCount = (scraped.competitors || []).length;
-  const el = document.getElementById('loading-eta');
-  if (!el) return;
-  el.innerHTML = `
-    <div class="scrape-ready">
-      <div class="sr-check">✓</div>
-      <div class="sr-text">Scraped <strong>${domain}</strong> and ${compCount} competitor${compCount !== 1 ? 's' : ''}.<br>Ready to generate the IA.</div>
-      <button class="sr-btn" onclick="handleGenerateIA()">Generate IA →</button>
-    </div>`;
+  // Replace the entire loading-steps + eta area with the ready prompt
+  const stepsEl = document.getElementById('loading-steps');
+  const etaEl = document.getElementById('loading-eta');
+  if (stepsEl) stepsEl.style.opacity = '0.4';
+  const target = etaEl || stepsEl || document.querySelector('.loading-wrap');
+  if (!target) return;
+  const div = document.createElement('div');
+  div.className = 'scrape-ready';
+  div.innerHTML = `
+    <div class="sr-check">✓</div>
+    <div class="sr-text">Scraped <strong>${domain}</strong> and ${compCount} competitor${compCount !== 1 ? 's' : ''}.<br>Ready to generate the IA.</div>
+    <button class="sr-btn" onclick="handleGenerateIA()">Generate IA →</button>`;
+  if (etaEl) {
+    etaEl.replaceWith(div);
+  } else {
+    target.appendChild(div);
+  }
 }
 
 async function handleGenerateIA() {
