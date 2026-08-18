@@ -686,3 +686,149 @@ body.sitemap .ia-el{opacity:0;pointer-events:none;}
 .comp-side-panel::-webkit-scrollbar{width:4px;}
 .comp-side-panel::-webkit-scrollbar-track{background:transparent;}
 .comp-side-panel::-webkit-scrollbar-thumb{background:#e0e0e0;border-radius:2px;}
+
+/* ══════════════════════════════════════
+   WIZARD — 4-STEP INPUT FLOW
+══════════════════════════════════════ */
+
+/* Progress indicator */
+.wiz-progress{
+  display:flex;align-items:center;gap:0;
+  margin-bottom:24px;
+}
+.wiz-dot{
+  width:28px;height:28px;border-radius:50%;
+  display:flex;align-items:center;justify-content:center;
+  font-size:11px;font-weight:800;font-family:'Lato',sans-serif;
+  flex-shrink:0;transition:background .2s,color .2s,border-color .2s;
+  border:2px solid #e0e0e0;background:#fff;color:#ccc;
+}
+.wiz-dot.active{
+  background:#1A4040;border-color:#1A4040;color:#fff;
+}
+.wiz-dot.done{
+  background:#E8F4F0;border-color:#1A4040;color:#1A4040;
+}
+.wiz-dot.done span::after{ content:'✓'; }
+.wiz-dot.done span{ font-size:0; }
+.wiz-dot.done span::after{ font-size:11px; }
+.wiz-line{
+  flex:1;height:2px;background:#e0e0e0;
+  transition:background .25s;
+}
+.wiz-line.filled{ background:#1A4040; }
+
+/* Step panels */
+.wiz-panel{ display:none;flex-direction:column;gap:0; }
+.wiz-panel.active{ display:flex; }
+
+.wiz-step-label{
+  font-size:13px;font-weight:800;color:#111;
+  letter-spacing:-.01em;margin-bottom:4px;
+  display:flex;align-items:center;gap:8px;
+}
+.wiz-opt{
+  font-size:10px;font-weight:600;color:#bbb;
+  background:#f4f4f4;border-radius:4px;
+  padding:2px 7px;letter-spacing:.02em;font-style:normal;
+}
+.wiz-step-sub{
+  font-size:12px;color:#888;line-height:1.5;
+  margin-bottom:16px;font-weight:400;
+}
+
+/* Brief textarea */
+#brief-text{
+  width:100%;border:1.5px solid #e0e0e0;border-radius:10px;
+  padding:12px 14px;font-size:13px;font-family:'Lato',sans-serif;
+  color:#111;background:#fafafa;
+  resize:vertical;min-height:100px;
+  outline:none;line-height:1.55;
+  transition:border-color .15s,background .15s;
+  margin-bottom:12px;
+}
+#brief-text:focus{ border-color:#1A4040;background:#fff; }
+#brief-text::placeholder{ color:#bbb; }
+
+/* File upload row */
+.wiz-upload-row{
+  display:flex;align-items:center;gap:10px;
+  margin-bottom:4px;
+}
+.wiz-upload-btn{
+  display:flex;align-items:center;gap:6px;
+  padding:8px 14px;border-radius:8px;
+  border:1.5px solid #e0e0e0;background:#fff;
+  font-size:12px;font-weight:700;color:#555;
+  font-family:'Lato',sans-serif;cursor:pointer;
+  transition:border-color .15s,color .15s,background .15s;
+  white-space:nowrap;flex-shrink:0;
+}
+.wiz-upload-btn:hover{ border-color:#1A4040;color:#1A4040;background:#F0F7F5; }
+.wiz-file-name{
+  font-size:11.5px;color:#888;font-weight:500;
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+}
+
+/* Step actions row */
+.wiz-actions{
+  display:flex;align-items:center;justify-content:space-between;
+  gap:10px;margin-top:20px;
+}
+.wiz-actions.single{ justify-content:flex-end; }
+
+.wiz-back-btn{
+  border:none;background:none;cursor:pointer;
+  font-size:12px;font-weight:700;color:#bbb;
+  font-family:'Lato',sans-serif;padding:0;
+  transition:color .15s;
+}
+.wiz-back-btn:hover{ color:#555; }
+
+.wiz-next-btn{
+  display:flex;align-items:center;gap:8px;
+  padding:12px 22px;border-radius:10px;border:none;cursor:pointer;
+  background:#1A4040;color:#fff;
+  font-size:13px;font-weight:700;
+  font-family:'Lato',sans-serif;
+  transition:background .15s,box-shadow .15s;
+  box-shadow:0 3px 12px rgba(26,64,64,.2);
+}
+.wiz-next-btn:hover{ background:#153232;box-shadow:0 4px 16px rgba(26,64,64,.28); }
+
+/* Override generate-btn inside wizard step */
+#ws-4 .generate-btn{
+  flex:1;max-width:220px;padding:12px 22px;
+  font-size:13px;margin-top:0;
+  box-shadow:0 3px 12px rgba(26,64,64,.2);
+}
+
+/* Understanding bullets */
+.u-bullets{
+  background:#F5F9F5;border-radius:10px;
+  padding:16px;display:flex;flex-direction:column;gap:10px;
+  margin-bottom:4px;min-height:80px;
+}
+.u-loading{
+  display:flex;align-items:center;gap:8px;
+  font-size:12px;color:#888;font-weight:500;
+  font-family:'Lato',sans-serif;
+}
+.u-spinner{
+  display:inline-block;
+  animation:spin 1s linear infinite;
+  font-size:14px;color:#1A4040;
+}
+.u-bullet{
+  display:flex;align-items:flex-start;gap:10px;
+  font-size:12.5px;color:#333;line-height:1.55;
+  font-family:'Lato',sans-serif;
+}
+.u-dash{
+  color:#1A4040;font-weight:800;flex-shrink:0;
+  margin-top:1px;
+}
+.u-fallback{
+  font-size:12px;color:#888;font-style:italic;
+  font-family:'Lato',sans-serif;
+}

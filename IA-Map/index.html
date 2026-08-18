@@ -10,7 +10,7 @@
 <body>
 
 <!-- ═══════════════════════════════════════════════
-     STATE 1: INPUT
+     STATE 1: INPUT (4-step wizard)
 ════════════════════════════════════════════════ -->
 <div id="state-input" class="state active">
   <div class="input-bg"></div>
@@ -25,42 +25,105 @@
     </div>
 
     <h1 class="input-headline">Propose a better<br>information architecture.</h1>
-    <p class="input-sub">Enter any company URL. We'll scrape the site, benchmark against competitors, and generate a fully interactive proposed IA — in under a minute.</p>
+    <p class="input-sub">Enter a URL, share your brief, and let Claude generate a fully benchmarked proposed IA — in under a minute.</p>
 
+    <!-- WIZARD CARD -->
     <div class="input-card">
-      <label class="field-label">Company URL</label>
-      <div class="url-field-wrap">
-        <span class="url-icon">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
-        </span>
-        <input id="url-input" type="url" placeholder="https://company.com" autocomplete="off" spellcheck="false">
-      </div>
-      <div id="url-error" class="field-error"></div>
 
-      <!-- Competitor input -->
-      <div class="comp-section">
-        <button class="comp-toggle" id="comp-toggle" onclick="toggleCompetitors()">
-          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-          Add competitors manually <span class="comp-optional">optional</span>
-        </button>
-        <div id="comp-panel" class="comp-panel hidden">
-          <div class="comp-field-wrap">
-            <input id="comp-input" type="text" placeholder="competitor.com or Company Name" autocomplete="off">
-            <button class="comp-add-btn" onclick="addCompetitor()">Add</button>
-          </div>
-          <div id="comp-chips" class="comp-chips"></div>
-          <p class="comp-hint">Up to 6 competitors. We'll auto-identify more from industry context.</p>
+      <!-- Progress bar -->
+      <div class="wiz-progress">
+        <div class="wiz-dot active" id="wp-1"><span>1</span></div>
+        <div class="wiz-line" id="wl-1-2"></div>
+        <div class="wiz-dot" id="wp-2"><span>2</span></div>
+        <div class="wiz-line" id="wl-2-3"></div>
+        <div class="wiz-dot" id="wp-3"><span>3</span></div>
+        <div class="wiz-line" id="wl-3-4"></div>
+        <div class="wiz-dot" id="wp-4"><span>4</span></div>
+      </div>
+
+      <!-- ── Step 1: URL ── -->
+      <div class="wiz-panel active" id="ws-1">
+        <div class="wiz-step-label">Website URL</div>
+        <p class="wiz-step-sub">Enter the company website you want to revamp</p>
+        <div class="url-field-wrap">
+          <span class="url-icon">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
+          </span>
+          <input id="url-input" type="url" placeholder="https://company.com" autocomplete="off" spellcheck="false">
+        </div>
+        <div id="url-error" class="field-error"></div>
+        <div class="wiz-actions single">
+          <button class="wiz-next-btn" onclick="goToStep(2)">
+            Continue
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+          </button>
         </div>
       </div>
 
-      <button id="generate-btn" class="generate-btn" onclick="startGenerate()">
-        Generate IA
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
-      </button>
-    </div>
+      <!-- ── Step 2: Brief / Document ── -->
+      <div class="wiz-panel" id="ws-2">
+        <div class="wiz-step-label">Project brief <span class="wiz-opt">optional</span></div>
+        <p class="wiz-step-sub">Share a POC doc, SOW, or key goals — Claude will factor them into the proposed IA</p>
+        <textarea id="brief-text" rows="5" placeholder="Paste any brief, goals, constraints, or key requirements here…"></textarea>
+        <div class="wiz-upload-row">
+          <input type="file" id="brief-file" accept=".pdf,.txt" style="display:none">
+          <button class="wiz-upload-btn" onclick="triggerFileUpload()">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+            Attach PDF
+          </button>
+          <span id="file-name" class="wiz-file-name"></span>
+        </div>
+        <div class="wiz-actions">
+          <button class="wiz-back-btn" onclick="goToStep(1)">← Back</button>
+          <button class="wiz-next-btn" onclick="goToStep(3)">
+            Continue
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+          </button>
+        </div>
+      </div>
+
+      <!-- ── Step 3: Competitors ── -->
+      <div class="wiz-panel" id="ws-3">
+        <div class="wiz-step-label">Competitors <span class="wiz-opt">optional</span></div>
+        <p class="wiz-step-sub">Add specific competitors to benchmark against — or leave blank and Claude will identify the best ones</p>
+        <div class="comp-field-wrap">
+          <input id="comp-input" type="text" placeholder="competitor.com or Company Name" autocomplete="off">
+          <button class="comp-add-btn" onclick="addCompetitor()">Add</button>
+        </div>
+        <div id="comp-chips" class="comp-chips"></div>
+        <p class="comp-hint">Up to 6 competitors. Auto-identified if left blank.</p>
+        <div class="wiz-actions">
+          <button class="wiz-back-btn" onclick="goToStep(2)">← Back</button>
+          <button class="wiz-next-btn" onclick="goToStep(4)">
+            Analyse scope
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+          </button>
+        </div>
+      </div>
+
+      <!-- ── Step 4: Scope understanding ── -->
+      <div class="wiz-panel" id="ws-4">
+        <div class="wiz-step-label">Scope confirmed</div>
+        <p class="wiz-step-sub">Here's what we'll build — review before generating</p>
+        <div id="understanding-bullets" class="u-bullets">
+          <div class="u-loading">
+            <span class="u-spinner">⟳</span> Reading your inputs…
+          </div>
+        </div>
+        <div id="understand-error" class="field-error"></div>
+        <div class="wiz-actions">
+          <button class="wiz-back-btn" onclick="goToStep(3)">← Back</button>
+          <button id="wizard-generate-btn" class="generate-btn" onclick="startGenerate()" disabled>
+            Generate IA
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+          </button>
+        </div>
+      </div>
+
+    </div><!-- /input-card -->
 
     <div class="input-footer">
-      <span>Powered by Claude · Cloudflare Workers · NetBramha IA Framework</span>
+      <span>Powered by Claude · Railway · NetBramha IA Framework</span>
     </div>
   </div>
 </div>
@@ -95,7 +158,7 @@
         <span class="lstep-text">Building interactive prototype…</span>
       </div>
     </div>
-    <div class="loading-eta">Estimated time: 20–45 seconds</div>
+    <div class="loading-eta" id="loading-eta">Estimated time: 30–60 seconds</div>
     <div class="nb-wordmark">NetBramha</div>
   </div>
 </div>
@@ -131,7 +194,7 @@
   <!-- ISLAND NAV -->
   <div id="island-nav"></div>
 
-  <!-- COMPETITORS FLOAT BTN — right-aligned, inline with island nav -->
+  <!-- COMPETITORS FLOAT BTN -->
   <button id="comp-float-btn" class="comp-float-btn" onclick="toggleCompPanel()">
     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
     Analysis
@@ -142,7 +205,6 @@
     <div id="canvas">
       <svg id="svg" style="position:absolute;top:0;left:0;overflow:visible;pointer-events:none;"></svg>
     </div>
-    <!-- SITEMAP CANVAS -->
     <div id="sm-canvas" style="display:none;position:absolute;top:0;left:0;">
       <svg id="sm-svg" style="position:absolute;top:0;left:0;overflow:visible;pointer-events:none;"></svg>
     </div>

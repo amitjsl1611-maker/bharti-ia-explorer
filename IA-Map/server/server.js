@@ -35,8 +35,16 @@ app.post('/', async (req, res) => {
   }
 
   try {
+    // ── PASS 0: Scope understanding (quick, no scrape) ──
+    if (action === 'understand') {
+      const { url: uUrl, brief_text, competitors_hint } = req.body;
+      const bullets = await understandScope(uUrl, brief_text, competitors_hint);
+      return res.json({ bullets });
+    }
+
     if (action === 'synthesise') {
-      const result = await synthesiseIA(targetData, competitorData);
+      const { brief_text, document_base64, document_media_type } = req.body;
+      const result = await synthesiseIA(targetData, competitorData, brief_text, document_base64, document_media_type);
       return res.json(result);
     }
 
@@ -228,9 +236,48 @@ async function identifyCompetitors(url, companyName, manualList) {
 }
 
 /* ═══════════════════════════════════════════
+   PASS 0 — SCOPE UNDERSTANDING (fast, no scrape)
+═══════════════════════════════════════════ */
+async function understandScope(url, brief_text, competitors_hint) {
+  const prompt = `You are about to analyze the website at "${url || 'the provided URL'}" to propose a revamped information architecture.
+
+${brief_text ? `CLIENT BRIEF / INTENT:\n${brief_text}\n\n` : ''}${competitors_hint ? `REQUESTED COMPETITORS: ${competitors_hint}\n\n` : ''}Generate 5–7 crisp bullet points summarising what you understand about this project. Each bullet must be specific and concrete — reference the actual company name (infer it from the URL), real deliverables, and any explicit requirements from the brief.
+
+Cover in this order:
+1. Company and what they do (inferred from URL domain)
+2. Core problem with the existing IA (infer from the company type)
+3. Primary goal of this revamp
+4. Any key requirements or constraints from the brief (only if a brief was provided)
+5. How competitors will be benchmarked
+6. What the proposed IA will prioritise surfacing
+7. Depth and scope of the output
+
+Return ONLY a JSON array of strings, no explanation, no markdown:
+["bullet 1", "bullet 2", ...]`;
+
+  try {
+    const response = await callClaude({
+      model: 'claude-sonnet-4-6',
+      max_tokens: 700,
+      messages: [{ role: 'user', content: prompt }],
+    });
+    const text = response.content[0].text.replace(/```json|```/g, '').trim();
+    const match = text.match(/\[[\s\S]*\]/);
+    if (match) return JSON.parse(match[0]);
+  } catch (e) { console.error('understand failed:', e); }
+  return [
+    `Analysing ${url} for a full IA and sitemap revamp`,
+    'Proposing a need-based primary navigation (4–6 items)',
+    'Benchmarking against 3 industry-relevant competitors',
+    'Surfacing all product lines and capabilities at L2',
+    'Generating L1 → L2 → L3 IA with rationale and analysis',
+  ];
+}
+
+/* ═══════════════════════════════════════════
    PASS 2 — IA STRUCTURE (Sonnet, full prompt)
 ═══════════════════════════════════════════ */
-async function synthesiseIA(targetData, competitorData) {
+async function synthesiseIA(targetData, competitorData, briefText, documentBase64, documentMediaType) {
 
   // Detect industry from nav/title/meta for tailored rules
   const industryHint = detectIndustry(targetData);
@@ -299,7 +346,7 @@ Given scraped nav, sitemap URLs, inner page headings, and footer links from a re
   "rationale": "3-4 sentences explaining the overall IA strategy and key tradeoffs"
 }`;
 
-  const user = `## TARGET SITE
+  const userText = `${briefText ? `## CLIENT BRIEF / PROJECT INTENT\n${briefText}\n\nFactor these requirements and constraints into every IA decision you make. If the brief names specific sections, products, or goals, ensure they are reflected in the proposed nav.\n\n` : ''}## TARGET SITE
 ${JSON.stringify({
     domain: targetData.domain,
     title: targetData.title,
@@ -325,11 +372,23 @@ ${JSON.stringify(competitorData.map(c => ({
 
 Apply all 12 rules. Surface every distinct product line and capability as at minimum an L2. Return ONLY the JSON.`;
 
+  // Build content array — include uploaded document if provided
+  const userContent = [];
+  if (documentBase64 && documentMediaType) {
+    userContent.push({
+      type: 'document',
+      source: { type: 'base64', media_type: documentMediaType, data: documentBase64 },
+      title: 'Client Brief / Project Document',
+      cache_control: { type: 'ephemeral' },
+    });
+  }
+  userContent.push({ type: 'text', text: userText });
+
   const response = await callClaude({
     model: 'claude-sonnet-4-6',
     max_tokens: 6000,
     system,
-    messages: [{ role: 'user', content: user }],
+    messages: [{ role: 'user', content: userContent }],
   });
   const cleaned = response.content[0].text.replace(/```json|```/g, '').trim();
   const jsonMatch = cleaned.match(/\{[\s\S]*\}/);
