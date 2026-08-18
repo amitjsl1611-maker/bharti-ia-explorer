@@ -25,6 +25,8 @@ app.use((req, res, next) => {
   next();
 });
 
+app.get('/', (req, res) => res.json({ status: 'ok', service: 'IA Map Server' }));
+
 app.post('/', async (req, res) => {
   const { action, url, competitors_manual, targetData, competitorData, competitors } = req.body || {};
 
