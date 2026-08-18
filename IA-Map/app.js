@@ -164,16 +164,21 @@ async function fetchUnderstanding() {
     });
 
     if (!res.ok) throw new Error('Understanding call failed');
-    const data = await res.json();
-    const bullets = data.bullets || [];
+    let data;
+    try { data = await res.json(); } catch { data = {}; }
+    const bullets = Array.isArray(data.bullets) ? data.bullets : [];
 
-    bulletsEl.innerHTML = bullets.map(b => `
-      <div class="u-bullet">
-        <span class="u-dash">—</span>
-        <span>${b}</span>
-      </div>`).join('');
+    if (bullets.length) {
+      bulletsEl.innerHTML = bullets.map(b => `
+        <div class="u-bullet">
+          <span class="u-dash">—</span>
+          <span>${b}</span>
+        </div>`).join('');
+    } else {
+      bulletsEl.innerHTML = '<div class="u-fallback">Scope understood. Click Generate IA to proceed.</div>';
+    }
   } catch {
-    bulletsEl.innerHTML = '<div class="u-fallback">Ready to generate your IA. Click below to proceed.</div>';
+    bulletsEl.innerHTML = '<div class="u-fallback">Scope understood. Click Generate IA to proceed.</div>';
   }
 
   if (genBtn) genBtn.disabled = false;
@@ -431,10 +436,13 @@ function renderResult(data) {
    ERROR
 ═══════════════════════════════════════════ */
 function showError(msg) {
-  // Go back to wizard step 1 with error
   showState('state-input');
   goToStep(1);
-  document.getElementById('url-error').textContent = msg;
+  // Show a clean message — never expose raw JS errors to the user
+  const clean = (msg && !msg.includes('JSON') && !msg.includes('fetch') && msg.length < 120)
+    ? msg
+    : 'Something went wrong. Please try again.';
+  document.getElementById('url-error').textContent = clean;
 }
 
 /* ═══════════════════════════════════════════
