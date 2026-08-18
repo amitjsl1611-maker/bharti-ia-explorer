@@ -6,7 +6,7 @@
 'use strict';
 
 /* ── CONFIG — set your Worker URL here after deploy ── */
-const WORKER_URL = 'https://ia-map-worker.ajaiswal-bd5.workers.dev/';
+const WORKER_URL = 'https://bharti-ia-explorer-production.up.railway.app';
 
 /* ── STATE ── */
 let manualCompetitors = [];
