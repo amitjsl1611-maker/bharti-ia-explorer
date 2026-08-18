@@ -329,18 +329,18 @@ async function identifyCompetitors(url, companyName, manualList) {
 async function understandScope(url, brief_text, competitors_hint) {
   const prompt = `You are about to analyze the website at "${url || 'the provided URL'}" to propose a revamped information architecture.
 
-${brief_text ? `CLIENT BRIEF / INTENT:\n${brief_text}\n\n` : ''}${competitors_hint ? `REQUESTED COMPETITORS: ${competitors_hint}\n\n` : ''}Generate 5–7 crisp bullet points summarising what you understand about this project. Each bullet must be specific and concrete — reference the actual company name (infer it from the URL), real deliverables, and any explicit requirements from the brief.
+${brief_text ? `CLIENT BRIEF / INTENT:\n${brief_text}\n\n` : ''}${competitors_hint ? `REQUESTED COMPETITORS: ${competitors_hint}\n\n` : ''}Generate 5–7 crisp bullet points summarising what you understand about this project. Each bullet must be ONE short sentence — maximum 18 words. No sub-clauses, no lists within a bullet. Specific and concrete — reference the actual company name (infer from URL) and real deliverables.
 
 Cover in this order:
-1. Company and what they do (inferred from URL domain)
-2. Core problem with the existing IA (infer from the company type)
-3. Primary goal of this revamp
-4. Any key requirements or constraints from the brief (only if a brief was provided)
-5. How competitors will be benchmarked
-6. What the proposed IA will prioritise surfacing
-7. Depth and scope of the output
+1. Company name and what they do (one line)
+2. Core IA problem on the existing site (one line)
+3. Primary goal of this revamp (one line)
+4. Key requirement from the brief (one line, only if brief provided)
+5. Competitors to benchmark against (one line)
+6. What the proposed IA will prioritise surfacing (one line)
+7. Depth of output — L1/L2/L3 scope (one line)
 
-Return ONLY a JSON array of strings, no explanation, no markdown:
+Return ONLY a JSON array of short strings, no explanation, no markdown:
 ["bullet 1", "bullet 2", ...]`;
 
   try {
