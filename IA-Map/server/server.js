@@ -56,8 +56,17 @@ app.post('/', async (req, res) => {
     // ── PASS 1: Scrape ──
     if (!url) return res.status(400).json({ error: 'URL is required' });
 
-    const tData = await scrapeSite(url, true);   // deep=true for target
-    const comps  = await identifyCompetitors(url, tData.title || url, competitors_manual);
+    // Derive a company name hint from the URL for early competitor ID
+    let domainHint = url;
+    try { domainHint = new URL(url.startsWith('http') ? url : `https://${url}`).hostname.replace(/^www\./, ''); } catch {}
+
+    // Run target scrape + competitor identification in parallel
+    const [tData, comps] = await Promise.all([
+      scrapeSite(url, true),   // deep=true for target
+      identifyCompetitors(url, domainHint, competitors_manual),
+    ]);
+
+    // Scrape competitors (shallow) in parallel — cap at 3
     const compResults = await Promise.allSettled(
       comps.slice(0, 3).map(c => scrapeSite(`https://${c.domain}`, false).then(d => ({ ...d, meta: c })))
     );
@@ -231,7 +240,7 @@ async function scrapeSite(rawUrl, deep = false) {
 
   // ── Deep inner-page scraping (target only, up to 12 pages) ──
   if (deep) {
-    const toScrape = selectInnerPages(result.sitemap_urls, result.nav, domain, 12);
+    const toScrape = selectInnerPages(result.sitemap_urls, result.nav, domain, 8);
     console.log(`Deep scraping ${toScrape.length} inner pages for ${domain}`);
     const innerResults = await Promise.allSettled(
       toScrape.map(pageUrl => scrapeInnerPage(pageUrl, domain))
@@ -403,7 +412,7 @@ Only include gaps that are genuinely meaningful for IA decisions. 5–9 gaps max
   try {
     const response = await callClaude({
       model: 'claude-sonnet-4-6',
-      max_tokens: 900,
+      max_tokens: 600,
       messages: [{ role: 'user', content: prompt }],
     });
     const text = response.content[0].text.replace(/```json|```/g,'').trim();
@@ -454,7 +463,7 @@ Answer these 4 questions in plain prose (2-3 sentences each). Be specific — na
   try {
     const response = await callClaude({
       model: 'claude-sonnet-4-6',
-      max_tokens: 800,
+      max_tokens: 500,
       messages: [{ role: 'user', content: prompt }],
     });
     return response.content[0].text.trim();
