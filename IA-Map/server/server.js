@@ -363,6 +363,57 @@ Return ONLY a JSON array of strings, no explanation, no markdown:
 }
 
 /* ═══════════════════════════════════════════
+   COMPETITOR DELTA PRE-PROCESSING
+   Structured diff of target vs competitors —
+   surfaces concrete gaps before synthesis.
+═══════════════════════════════════════════ */
+async function buildCompetitorDelta(targetData, competitorData) {
+  const targetNav = (targetData.structured_nav || targetData.nav || [])
+    .slice(0, 16).map(l => l.text).filter(Boolean).join(', ');
+
+  const compRows = competitorData.map(c => {
+    const nav = (c.structured_nav || c.nav || []).slice(0, 16).map(l => l.text).filter(Boolean).join(', ');
+    const sections = (c.site_sections || []).slice(0, 10).join(', ');
+    return `${c.domain} — nav: [${nav}]${sections ? ` | sections: ${sections}` : ''}`;
+  }).join('\n');
+
+  const prompt = `You are comparing a target website's navigation against its competitors to find IA gaps.
+
+TARGET SITE: ${targetData.domain}
+TARGET NAV: [${targetNav}]
+TARGET SECTIONS: ${(targetData.site_sections||[]).slice(0,12).join(', ')||'unknown'}
+
+COMPETITORS:
+${compRows}
+
+Produce a structured gap analysis. For each gap, be specific — name the actual nav label or section.
+
+Return ONLY a JSON array, no markdown:
+[
+  {
+    "gap": "short label for the gap (e.g. 'Missing advisor/distributor section')",
+    "competitors_with_it": ["domain1.com", "domain2.com"],
+    "recommendation": "adopt | consider | skip",
+    "reason": "one sentence — why this matters for the target site's audience"
+  }
+]
+
+Only include gaps that are genuinely meaningful for IA decisions. 5–9 gaps max.`;
+
+  try {
+    const response = await callClaude({
+      model: 'claude-sonnet-4-6',
+      max_tokens: 900,
+      messages: [{ role: 'user', content: prompt }],
+    });
+    const text = response.content[0].text.replace(/```json|```/g,'').trim();
+    const match = text.match(/\[[\s\S]*\]/);
+    if (match) return JSON.parse(match[0]);
+  } catch (e) { console.error('Competitor delta failed:', e); }
+  return [];
+}
+
+/* ═══════════════════════════════════════════
    CHAIN-OF-THOUGHT PRE-PASS
    Reason about IA problems before generating JSON.
    Output is injected as hidden context into Pass 2.
@@ -485,8 +536,11 @@ Given scraped nav, sitemap URLs, inner page headings, and footer links from a re
   "rationale": "3-4 sentences explaining the overall IA strategy and key tradeoffs"
 }`;
 
-  // Run CoT reasoning in parallel (doesn't block, just enriches the prompt)
-  const cotReasoning = await reasonAboutIA(targetData, competitorData, briefText, industryHint.label);
+  // Run CoT reasoning + competitor delta in parallel
+  const [cotReasoning, competitorDelta] = await Promise.all([
+    reasonAboutIA(targetData, competitorData, briefText, industryHint.label),
+    buildCompetitorDelta(targetData, competitorData),
+  ]);
 
   const userText = `${briefText ? `## CLIENT BRIEF / PROJECT INTENT\n${briefText}\n\nFactor these requirements and constraints into every IA decision you make. If the brief names specific sections, products, or goals, ensure they are reflected in the proposed nav.\n\n` : ''}${cotReasoning ? `## STRATEGIC IA ANALYSIS (your own prior reasoning — build on this, don't contradict it)
 ${cotReasoning}
@@ -520,7 +574,12 @@ ${JSON.stringify(competitorData.map(c => ({
     footer_links: c.footer_links?.slice(0, 12),
   })))}
 
-Apply all 12 rules. Surface every distinct product line and capability as at minimum an L2. Return ONLY the JSON.`;
+${competitorDelta.length ? `## COMPETITOR GAP ANALYSIS (act on these — don't just note them)
+${competitorDelta.map(g =>
+  `- ${g.gap} [${g.recommendation.toUpperCase()}] — seen at: ${g.competitors_with_it.join(', ')} — ${g.reason}`
+).join('\n')}
+
+` : ''}Apply all 12 rules. Surface every distinct product line and capability as at minimum an L2. For every gap marked ADOPT above, ensure it appears in the proposed IA. Return ONLY the JSON.`;
 
   // Build content array — include uploaded document if provided
   const userContent = [];
