@@ -74,17 +74,124 @@ app.post('/', async (req, res) => {
 app.listen(PORT, () => console.log(`IA Map server v2 running on port ${PORT}`));
 
 /* ═══════════════════════════════════════════
-   SCRAPING — homepage + inner pages for target
+   SCRAPING
 ═══════════════════════════════════════════ */
 
-// Priority inner pages to deep-scrape on target site
-const INNER_PAGE_PATTERNS = [
-  /\/(about|who-we-are|about-us|company|our-story)\/?$/i,
-  /\/(solutions|products|services|offerings|platform|capabilities)\/?$/i,
-  /\/(industries|sectors|verticals|segments)\/?$/i,
-  /\/(technology|tech|innovation|ai|data)\/?$/i,
-  /\/(newsroom|news|media|press|insights|resources)\/?$/i,
-];
+const UA = 'Mozilla/5.0 (compatible; IAMap/1.0; +https://netbramha.com)';
+
+/* ── Fetch all URLs from sitemap, following sitemap index files ── */
+async function fetchSitemapUrls(domain) {
+  const candidates = ['/sitemap.xml', '/sitemap_index.xml', '/sitemap/sitemap.xml'];
+
+  // Also check robots.txt for a Sitemap: directive
+  try {
+    const rb = await fetch(`${domain}/robots.txt`, { headers: { 'User-Agent': UA }, signal: AbortSignal.timeout(5000) });
+    if (rb.ok) {
+      const txt = await rb.text();
+      const m = txt.match(/Sitemap:\s*(https?:\/\/[^\s]+)/gi);
+      if (m) m.forEach(line => { const u = line.replace(/^sitemap:\s*/i,'').trim(); if (!candidates.includes(u)) candidates.push(u); });
+    }
+  } catch { /* silent */ }
+
+  for (const path of candidates) {
+    try {
+      const sitemapUrl = path.startsWith('http') ? path : `${domain}${path}`;
+      const res = await fetch(sitemapUrl, { headers: { 'User-Agent': UA }, signal: AbortSignal.timeout(8000) });
+      if (!res.ok) continue;
+      const xml = await res.text();
+      if (!xml.includes('<loc>')) continue;
+
+      // Sitemap index — follow child sitemaps
+      if (xml.includes('<sitemapindex')) {
+        const childUrls = [...xml.matchAll(/<loc>(.*?)<\/loc>/g)].map(m => m[1].trim());
+        const childResults = await Promise.allSettled(
+          childUrls.slice(0, 15).map(async child => {
+            try {
+              const r = await fetch(child, { headers: { 'User-Agent': UA }, signal: AbortSignal.timeout(8000) });
+              if (!r.ok) return [];
+              const x = await r.text();
+              return [...x.matchAll(/<loc>(.*?)<\/loc>/g)].map(m => m[1].trim());
+            } catch { return []; }
+          })
+        );
+        const all = childResults.filter(r => r.status === 'fulfilled').flatMap(r => r.value);
+        if (all.length) return { urls: all, total: all.length };
+      }
+
+      // Regular sitemap
+      const urls = [...xml.matchAll(/<loc>(.*?)<\/loc>/g)].map(m => m[1].trim());
+      if (urls.length) return { urls, total: urls.length };
+    } catch { /* silent */ }
+  }
+
+  return { urls: [], total: 0 };
+}
+
+/* ── Build a section map: path segment → page count ── */
+function buildSectionMap(urls, domain) {
+  const sections = {};
+  for (const url of urls) {
+    try {
+      const path = new URL(url).pathname;
+      const seg = path.split('/').filter(Boolean)[0];
+      if (!seg || seg.match(/\.(xml|html|pdf|jpg|png)$/i)) continue;
+      sections[seg] = (sections[seg] || 0) + 1;
+    } catch { /* silent */ }
+  }
+  return Object.entries(sections)
+    .sort((a, b) => b[1] - a[1])
+    .map(([seg, count]) => `/${seg}/ — ${count} page${count > 1 ? 's' : ''}`);
+}
+
+/* ── Section-aware inner page selection ── */
+function selectInnerPages(sitemapUrls, navLinks, domain, max = 12) {
+  const allUrls = [
+    ...sitemapUrls,
+    ...navLinks.map(l => l.href).filter(h => h.startsWith(domain)),
+  ];
+  const seen = new Set();
+  const selected = [];
+
+  // Priority patterns first
+  const priority = [
+    /\/(about|who-we-are|about-us|company|our-story|overview)\/?$/i,
+    /\/(solutions|products|services|offerings|platform|capabilities)\/?$/i,
+    /\/(investor|investor-services|invest)\/?$/i,
+    /\/(enroll|register|sign-up|signup)\/?$/i,
+    /\/(industries|sectors|verticals|segments)\/?$/i,
+    /\/(technology|tech|innovation|ai|data|digital)\/?$/i,
+    /\/(newsroom|news|media|press|insights|resources|blog)\/?$/i,
+    /\/(careers|jobs|join-us|work-with-us)\/?$/i,
+    /\/(contact|reach-us|get-in-touch)\/?$/i,
+    /\/(transact|transaction|mutual-fund|mf)\/?$/i,
+    /\/(partners|distributors|advisors|ifa)\/?$/i,
+    /\/(tools|calculators|calculator)\/?$/i,
+  ];
+
+  for (const pat of priority) {
+    const match = allUrls.find(u => pat.test(u) && !seen.has(u));
+    if (match) { selected.push(match); seen.add(match); }
+    if (selected.length >= max) break;
+  }
+
+  // Fill remaining slots: one representative URL per top-level path section
+  const sections = {};
+  for (const url of allUrls) {
+    try {
+      const seg = new URL(url).pathname.split('/').filter(Boolean)[0];
+      if (!seg) continue;
+      if (!sections[seg]) sections[seg] = [];
+      sections[seg].push(url);
+    } catch { /* silent */ }
+  }
+  for (const urls of Object.values(sections)) {
+    if (selected.length >= max) break;
+    const pick = urls.find(u => !seen.has(u));
+    if (pick) { selected.push(pick); seen.add(pick); }
+  }
+
+  return selected.slice(0, max);
+}
 
 async function scrapeSite(rawUrl, deep = false) {
   const url = rawUrl.startsWith('http') ? rawUrl : `https://${rawUrl}`;
@@ -92,46 +199,21 @@ async function scrapeSite(rawUrl, deep = false) {
   try { domain = new URL(url).origin; } catch { domain = url; }
 
   const result = {
-    domain, title: '', nav: [], sitemap_urls: [], footer_links: [],
-    page_count: 0, meta_desc: '', inner_pages: [],
+    domain, title: '', nav: [], sitemap_urls: [], site_sections: [],
+    footer_links: [], page_count: 0, meta_desc: '', inner_pages: [],
   };
-  const UA = 'Mozilla/5.0 (compatible; IAMap/1.0; +https://netbramha.com)';
 
-  // ── Sitemap ──
-  for (const path of ['/sitemap.xml', '/sitemap_index.xml', '/sitemap/sitemap.xml']) {
-    try {
-      const res = await fetch(`${domain}${path}`, { headers: { 'User-Agent': UA }, signal: AbortSignal.timeout(6000) });
-      if (res.ok) {
-        const xml = await res.text();
-        const urls = [...xml.matchAll(/<loc>(.*?)<\/loc>/g)].map(m => m[1].trim());
-        if (urls.length) { result.sitemap_urls = urls.slice(0, 150); result.page_count = urls.length; break; }
-      }
-    } catch { /* silent */ }
-  }
-
-  if (!result.sitemap_urls.length) {
-    try {
-      const res = await fetch(`${domain}/robots.txt`, { headers: { 'User-Agent': UA }, signal: AbortSignal.timeout(4000) });
-      if (res.ok) {
-        const text = await res.text();
-        const match = text.match(/Sitemap:\s*(https?:\/\/[^\s]+)/i);
-        if (match) {
-          const smRes = await fetch(match[1], { headers: { 'User-Agent': UA }, signal: AbortSignal.timeout(6000) });
-          if (smRes.ok) {
-            const xml = await smRes.text();
-            const urls = [...xml.matchAll(/<loc>(.*?)<\/loc>/g)].map(m => m[1].trim());
-            result.sitemap_urls = urls.slice(0, 150); result.page_count = urls.length;
-          }
-        }
-      }
-    } catch { /* silent */ }
-  }
+  // ── Sitemap — follow index files, aggregate all child sitemaps ──
+  const { urls: sitemapUrls, total } = await fetchSitemapUrls(domain);
+  result.sitemap_urls = sitemapUrls.slice(0, 300); // keep up to 300 for section analysis
+  result.page_count   = total;
+  result.site_sections = buildSectionMap(sitemapUrls, domain); // structured section breakdown
 
   // ── Homepage ──
   try {
     const res = await fetch(domain, {
       headers: { 'User-Agent': UA, 'Accept-Language': 'en-US,en;q=0.9' },
-      signal: AbortSignal.timeout(8000), redirect: 'follow',
+      signal: AbortSignal.timeout(10000), redirect: 'follow',
     });
     if (res.ok) {
       const html = await res.text();
@@ -140,28 +222,19 @@ async function scrapeSite(rawUrl, deep = false) {
       result.title = titleMatch ? titleMatch[1].trim() : domain;
       const metaMatch = html.match(/<meta[^>]+name=["']description["'][^>]+content=["']([^"']{1,300})["']/i);
       result.meta_desc = metaMatch ? metaMatch[1].trim() : '';
-      result.nav = extractLinks(html.slice(0, Math.floor(len * 0.25)), domain).slice(0, 24);
-      result.footer_links = extractLinks(html.slice(Math.floor(len * 0.85)), domain).slice(0, 32);
-      const navBlocks = [...html.matchAll(/<(?:nav|header)[^>]*>([\s\S]{1,8000}?)<\/(?:nav|header)>/gi)];
-      if (navBlocks.length) result.structured_nav = extractLinks(navBlocks.map(m => m[1]).join(' '), domain).slice(0, 20);
+      result.nav = extractLinks(html.slice(0, Math.floor(len * 0.25)), domain).slice(0, 30);
+      result.footer_links = extractLinks(html.slice(Math.floor(len * 0.85)), domain).slice(0, 40);
+      const navBlocks = [...html.matchAll(/<(?:nav|header)[^>]*>([\s\S]{1,12000}?)<\/(?:nav|header)>/gi)];
+      if (navBlocks.length) result.structured_nav = extractLinks(navBlocks.map(m => m[1]).join(' '), domain).slice(0, 30);
     }
   } catch { /* silent */ }
 
-  // ── Deep inner-page scraping (target only) ──
+  // ── Deep inner-page scraping (target only, up to 12 pages) ──
   if (deep) {
-    const candidateUrls = result.sitemap_urls.length
-      ? result.sitemap_urls
-      : result.nav.map(l => l.href);
-
-    const toScrape = [];
-    for (const pattern of INNER_PAGE_PATTERNS) {
-      const match = candidateUrls.find(u => pattern.test(u));
-      if (match && !toScrape.includes(match)) toScrape.push(match);
-      if (toScrape.length >= 5) break;
-    }
-
+    const toScrape = selectInnerPages(result.sitemap_urls, result.nav, domain, 12);
+    console.log(`Deep scraping ${toScrape.length} inner pages for ${domain}`);
     const innerResults = await Promise.allSettled(
-      toScrape.map(pageUrl => scrapeInnerPage(pageUrl, domain, UA))
+      toScrape.map(pageUrl => scrapeInnerPage(pageUrl, domain))
     );
     result.inner_pages = innerResults
       .filter(r => r.status === 'fulfilled' && r.value)
@@ -171,11 +244,11 @@ async function scrapeSite(rawUrl, deep = false) {
   return result;
 }
 
-async function scrapeInnerPage(pageUrl, domain, UA) {
+async function scrapeInnerPage(pageUrl, domain) {
   try {
     const res = await fetch(pageUrl, {
       headers: { 'User-Agent': UA, 'Accept-Language': 'en-US,en;q=0.9' },
-      signal: AbortSignal.timeout(8000), redirect: 'follow',
+      signal: AbortSignal.timeout(10000), redirect: 'follow',
     });
     if (!res.ok) return null;
     const html = await res.text();
@@ -183,20 +256,25 @@ async function scrapeInnerPage(pageUrl, domain, UA) {
     const titleMatch = html.match(/<title[^>]*>([^<]{1,120})<\/title>/i);
     const title = titleMatch ? titleMatch[1].trim() : pageUrl;
 
-    // Extract headings (H1–H3) as section evidence
-    const headings = [...html.matchAll(/<h[1-3][^>]*>\s*([^<]{2,120})\s*<\/h[1-3]>/gi)]
-      .map(m => m[1].replace(/\s+/g, ' ').trim())
-      .filter(h => h.length > 3 && h.length < 100)
-      .slice(0, 20);
-
-    // Sub-links on this page
-    const links = extractLinks(html, domain).slice(0, 20);
-
-    // Page-level meta description
     const metaMatch = html.match(/<meta[^>]+name=["']description["'][^>]+content=["']([^"']{1,300})["']/i);
     const meta_desc = metaMatch ? metaMatch[1].trim() : '';
 
-    return { url: pageUrl, title, meta_desc, headings, links };
+    // H1–H3 headings
+    const headings = [...html.matchAll(/<h[1-3][^>]*>\s*([\s\S]{2,200}?)\s*<\/h[1-3]>/gi)]
+      .map(m => m[1].replace(/<[^>]+>/g,'').replace(/\s+/g,' ').trim())
+      .filter(h => h.length > 3 && h.length < 120)
+      .slice(0, 24);
+
+    // Card / teaser titles (common in service/product pages)
+    const cardTitles = [...html.matchAll(/<(?:h4|h5|strong|b|dt)[^>]*>\s*([^<]{4,80})\s*<\/(?:h4|h5|strong|b|dt)>/gi)]
+      .map(m => m[1].replace(/\s+/g,' ').trim())
+      .filter(t => t.length > 4 && t.length < 80 && !/^\d+$/.test(t))
+      .slice(0, 16);
+
+    // Sub-links on this page (good proxy for what the page covers)
+    const links = extractLinks(html, domain).slice(0, 24);
+
+    return { url: pageUrl, title, meta_desc, headings, card_titles: cardTitles, links };
   } catch {
     return null;
   }
@@ -354,9 +432,12 @@ ${JSON.stringify({
     nav: targetData.nav?.slice(0, 20),
     structured_nav: targetData.structured_nav?.slice(0, 20),
     footer_links: targetData.footer_links?.slice(0, 15),
-    sitemap_sample: targetData.sitemap_urls?.slice(0, 50),
+    page_count: targetData.page_count,
+    site_sections: targetData.site_sections?.slice(0, 30),
+    sitemap_sample: targetData.sitemap_urls?.slice(0, 60),
     inner_pages: (targetData.inner_pages || []).map(p => ({
-      url: p.url, title: p.title, headings: p.headings, links: p.links?.slice(0, 10),
+      url: p.url, title: p.title, meta_desc: p.meta_desc,
+      headings: p.headings, card_titles: p.card_titles, links: p.links?.slice(0, 12),
     })),
   })}
 
@@ -364,10 +445,11 @@ ${JSON.stringify({
 ${JSON.stringify(competitorData.map(c => ({
     domain: c.domain,
     title: c.title,
-    nav: c.nav?.slice(0, 12),
-    structured_nav: c.structured_nav?.slice(0, 12),
-    sitemap_sample: c.sitemap_urls?.slice(0, 20),
-    footer_links: c.footer_links?.slice(0, 10),
+    nav: c.nav?.slice(0, 14),
+    structured_nav: c.structured_nav?.slice(0, 14),
+    page_count: c.page_count,
+    sitemap_sample: c.sitemap_urls?.slice(0, 25),
+    footer_links: c.footer_links?.slice(0, 12),
   })))}
 
 Apply all 12 rules. Surface every distinct product line and capability as at minimum an L2. Return ONLY the JSON.`;
@@ -456,6 +538,8 @@ ${JSON.stringify({
     title: targetData.title,
     nav: targetData.nav?.slice(0, 20),
     structured_nav: targetData.structured_nav?.slice(0, 20),
+    page_count: targetData.page_count,
+    site_sections: targetData.site_sections?.slice(0, 20),
     sitemap_sample: targetData.sitemap_urls?.slice(0, 40),
     footer_links: targetData.footer_links?.slice(0, 15),
     inner_pages: (targetData.inner_pages || []).map(p => ({ url: p.url, headings: p.headings })),
