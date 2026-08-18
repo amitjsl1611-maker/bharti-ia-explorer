@@ -136,29 +136,18 @@
   <div class="loading-wrap">
     <div class="loading-domain" id="loading-domain"></div>
     <div class="loading-title">Analysing information architecture</div>
-    <div class="loading-steps" id="loading-steps">
-      <div class="lstep" id="ls-scrape">
-        <span class="lstep-icon spin">⟳</span>
-        <span class="lstep-text">Scraping <span id="ls-domain-name"></span>…</span>
-      </div>
-      <div class="lstep pending" id="ls-competitors">
-        <span class="lstep-icon">○</span>
-        <span class="lstep-text">Identifying competitors…</span>
-      </div>
-      <div class="lstep pending" id="ls-comp-scrape">
-        <span class="lstep-icon">○</span>
-        <span class="lstep-text">Scraping competitor sites…</span>
-      </div>
-      <div class="lstep pending" id="ls-synthesis">
-        <span class="lstep-icon">○</span>
-        <span class="lstep-text">Synthesising information architecture…</span>
-      </div>
-      <div class="lstep pending" id="ls-render">
-        <span class="lstep-icon">○</span>
-        <span class="lstep-text">Building interactive prototype…</span>
-      </div>
-    </div>
+    <div id="loading-log" class="loading-log"></div>
     <div class="loading-eta" id="loading-eta">Estimated time: 30–60 seconds</div>
+
+    <!-- Hidden step anchors kept for JS compatibility -->
+    <div style="display:none">
+      <div id="ls-scrape"><span class="lstep-icon"></span></div>
+      <div id="ls-competitors"><span class="lstep-icon"></span></div>
+      <div id="ls-comp-scrape"><span class="lstep-icon"></span></div>
+      <div id="ls-synthesis"><span class="lstep-icon"></span></div>
+      <div id="ls-render"><span class="lstep-icon"></span></div>
+      <span id="ls-domain-name"></span>
+    </div>
     <div class="nb-wordmark">NetBramha</div>
   </div>
 </div>

@@ -207,6 +207,48 @@ html,body{width:100%;height:100%;overflow:hidden;font-family:'Lato',sans-serif;f
   opacity:.4;
 }
 
+/* Live loading log */
+.loading-log{
+  display:flex;flex-direction:column;gap:8px;
+  width:100%;max-height:260px;overflow-y:auto;
+  padding-right:2px;
+}
+.loading-log::-webkit-scrollbar{width:3px;}
+.loading-log::-webkit-scrollbar-thumb{background:#ddd;border-radius:2px;}
+
+.ll-row{
+  display:flex;align-items:flex-start;gap:10px;
+  font-size:12.5px;font-weight:500;color:#555;
+  line-height:1.4;
+  animation:ll-fade-in .25s ease both;
+}
+@keyframes ll-fade-in{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
+
+.ll-icon{
+  width:16px;flex-shrink:0;font-size:12px;
+  margin-top:1px;text-align:center;
+}
+.ll-text{ flex:1; }
+.ll-text strong{ font-weight:800;color:#111; }
+
+/* States */
+.ll-active .ll-icon{ color:#1A4040;animation:spin 1s linear infinite; }
+.ll-active .ll-icon::before{ content:'⟳'; }
+.ll-active .ll-icon{ font-size:0; } /* hide the child text */
+/* override: icon is set directly in innerHTML so no ::before needed */
+.ll-active{ color:#333; }
+.ll-done .ll-icon{ color:#1A4040;font-size:11px; }
+.ll-done{ color:#1A4040; }
+.ll-error .ll-icon{ color:#d44; }
+.ll-error{ color:#d44; }
+.ll-section{
+  margin-top:12px;padding-bottom:4px;
+  border-bottom:1px solid #ebebeb;
+}
+.ll-section:first-child{ margin-top:0; }
+.ll-section .ll-icon{ display:none; }
+.ll-section .ll-text{ font-size:10px;font-weight:800;letter-spacing:.07em;text-transform:uppercase;color:#aaa; }
+
 /* ══════════════════════════════════════
    STATE 3 — RESULT
 ══════════════════════════════════════ */

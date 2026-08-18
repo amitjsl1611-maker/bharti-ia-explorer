@@ -223,40 +223,67 @@ async function startGenerate() {
 }
 
 /* ═══════════════════════════════════════════
-   LOADING STEP HELPERS
+   LOADING LOG — live activity feed
 ═══════════════════════════════════════════ */
+let _logTimers = [];
+
 function resetLoadingSteps() {
-  ['ls-scrape','ls-competitors','ls-comp-scrape','ls-synthesis','ls-render'].forEach(id => {
-    const el = document.getElementById(id);
-    el.classList.remove('active','done');
-    el.classList.add('pending');
-    el.querySelector('.lstep-icon').className = 'lstep-icon';
-    el.querySelector('.lstep-icon').textContent = '○';
-  });
+  // Clear any running timers from previous run
+  _logTimers.forEach(t => clearTimeout(t));
+  _logTimers = [];
+  const log = document.getElementById('loading-log');
+  if (log) log.innerHTML = '';
 }
 
-function stepActive(id) {
-  const el = document.getElementById(id);
-  el.classList.remove('pending');
-  el.classList.add('active');
-  el.querySelector('.lstep-icon').className = 'lstep-icon spin';
-  el.querySelector('.lstep-icon').textContent = '⟳';
+// Add a new log line; returns its element so it can be updated later
+function addLog(text, type = 'active') {
+  const log = document.getElementById('loading-log');
+  if (!log) return null;
+  const row = document.createElement('div');
+  row.className = `ll-row ll-${type}`;
+  const icon = type === 'done' ? '✓' : type === 'section' ? '' : '→';
+  row.innerHTML = `<span class="ll-icon">${icon}</span><span class="ll-text">${text}</span>`;
+  log.appendChild(row);
+  // Scroll to bottom
+  log.scrollTop = log.scrollHeight;
+  return row;
 }
 
-function stepDone(id) {
-  const el = document.getElementById(id);
-  el.classList.remove('pending','active');
-  el.classList.add('done');
-  el.querySelector('.lstep-icon').className = 'lstep-icon';
-  el.querySelector('.lstep-icon').textContent = '✓';
+// Schedule a log message after delay ms; returns timer id
+function schedLog(delay, text, type = 'active') {
+  const t = setTimeout(() => addLog(text, type), delay);
+  _logTimers.push(t);
+  return t;
 }
+
+// Update an existing row's text and type
+function updateLogRow(row, text, type = 'done') {
+  if (!row) return;
+  row.className = `ll-row ll-${type}`;
+  const icon = type === 'done' ? '✓' : type === 'error' ? '✕' : '→';
+  row.innerHTML = `<span class="ll-icon">${icon}</span><span class="ll-text">${text}</span>`;
+  const log = document.getElementById('loading-log');
+  if (log) log.scrollTop = log.scrollHeight;
+}
+
+// No-op stubs so old renderer.js calls don't crash
+function stepActive() {}
+function stepDone() {}
 
 /* ═══════════════════════════════════════════
    PASS 1 — SCRAPE (auto-flows to Pass 2)
 ═══════════════════════════════════════════ */
 async function runPass1(url, domain) {
-  stepActive('ls-scrape');
-  simulatePass1Progress();
+  // ── Timed log messages during scraping ──
+  addLog(`<strong>Pass 1 — Scraping</strong>`, 'section');
+  const rowHomepage = addLog(`Fetching ${domain} homepage…`);
+  schedLog(1800,  `Reading sitemap.xml for full page inventory…`);
+  schedLog(4000,  `Extracting nav structure, footer links and page hierarchy…`);
+  schedLog(6500,  `Scanning inner pages: About, Solutions, Products, Services…`);
+  schedLog(9500,  `Asking Claude to identify best-in-class competitors…`);
+  schedLog(13000, `Fetching competitor site 1…`);
+  schedLog(17000, `Fetching competitor site 2…`);
+  schedLog(21000, `Fetching competitor site 3…`);
 
   const response = await fetch(WORKER_URL, {
     method: 'POST',
@@ -272,11 +299,20 @@ async function runPass1(url, domain) {
   const data = await response.json();
   _scrapedCache = data;
 
-  stepDone('ls-scrape');
-  stepDone('ls-competitors');
-  stepDone('ls-comp-scrape');
+  // ── Show actual results from the scrape ──
+  const pageCount = data.targetData?.page_count || 0;
+  const innerPages = data.targetData?.inner_pages?.length || 0;
+  updateLogRow(rowHomepage,
+    `${domain} scraped — ${pageCount ? pageCount + ' pages in sitemap' : 'homepage + nav extracted'}${innerPages ? ', ' + innerPages + ' inner pages read' : ''}`,
+    'done');
 
-  // Auto-advance to Pass 2 — no mid-point pause
+  const compNames = (data.competitors || []).map(c => c.name || c.domain).join(', ');
+  if (compNames) addLog(`Competitors identified: ${compNames}`, 'done');
+
+  const compCount = (data.competitorData || []).length;
+  if (compCount) addLog(`${compCount} competitor site${compCount > 1 ? 's' : ''} scraped successfully`, 'done');
+
+  // ── Auto-advance to Pass 2 ──
   await runPass2();
 }
 
@@ -287,7 +323,11 @@ async function runPass2() {
   if (!_scrapedCache) return;
   const { targetData, competitorData } = _scrapedCache;
 
-  stepActive('ls-synthesis');
+  addLog(`<strong>Pass 2 — Synthesis</strong>`, 'section');
+  const rowSynth = addLog(`Generating proposed IA with Claude Sonnet…`);
+  schedLog(8000,  `Applying 12 IA rules and industry-specific patterns…`);
+  schedLog(18000, `Building L1 → L2 → L3 nav structure…`);
+  schedLog(30000, `Finalising rationale and best practices…`);
 
   const brief = document.getElementById('brief-text').value.trim();
 
@@ -309,8 +349,8 @@ async function runPass2() {
     throw new Error(errMsg);
   }
 
-  stepDone('ls-synthesis');
-  stepActive('ls-render');
+  updateLogRow(rowSynth, 'Proposed IA generated', 'done');
+  addLog('Rendering interactive prototype…', 'active');
 
   const data = await response.json();
   renderResult(data);
@@ -353,15 +393,6 @@ async function parseWorkerError(response) {
   }
 }
 
-function simulatePass1Progress() {
-  const timings = [
-    { action: stepActive, id: 'ls-competitors', delay: 4000 },
-    { action: stepDone,   id: 'ls-scrape',      delay: 5000 },
-    { action: stepActive, id: 'ls-comp-scrape', delay: 5500 },
-    { action: stepDone,   id: 'ls-competitors', delay: 8000 },
-  ];
-  timings.forEach(t => setTimeout(() => t.action(t.id), t.delay));
-}
 
 /* ═══════════════════════════════════════════
    RENDER RESULT
