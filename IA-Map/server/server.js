@@ -595,7 +595,7 @@ ${competitorDelta.map(g =>
 
   const response = await callClaude({
     model: 'claude-sonnet-4-6',
-    max_tokens: 6000,
+    max_tokens: 8000,
     system,
     messages: [{ role: 'user', content: userContent }],
   });
