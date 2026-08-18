@@ -354,10 +354,14 @@ async function runPass2() {
     throw new Error(errMsg);
   }
 
+  let data;
+  try { data = await response.json(); } catch {
+    throw new Error('The IA response was too large or got cut off. Try a simpler site first, or try again.');
+  }
+  if (!data || !data.proposed_ia) throw new Error('Invalid IA response from server. Please try again.');
+
   updateLogRow(rowSynth, 'Proposed IA generated', 'done');
   addLog('Rendering interactive prototype…', 'active');
-
-  const data = await response.json();
   renderResult(data);
 }
 
@@ -379,7 +383,8 @@ async function runPass3() {
     throw new Error(errMsg);
   }
 
-  const analysis = await response.json();
+  let analysis;
+  try { analysis = await response.json(); } catch { return; } // silent fail on analysis
   if (window._currentIAData) {
     window._currentIAData.ia_changes = analysis.ia_changes || [];
     window._currentIAData.competitors = analysis.competitors || [];
