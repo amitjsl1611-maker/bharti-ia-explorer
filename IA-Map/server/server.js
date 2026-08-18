@@ -271,10 +271,20 @@ async function scrapeInnerPage(pageUrl, domain) {
       .filter(t => t.length > 4 && t.length < 80 && !/^\d+$/.test(t))
       .slice(0, 16);
 
+    // Body copy — first meaningful paragraphs (strip nav/footer noise by targeting <main> or <article> first)
+    const mainMatch = html.match(/<(?:main|article)[^>]*>([\s\S]*?)<\/(?:main|article)>/i);
+    const bodySource = mainMatch ? mainMatch[1] : html;
+    const bodyText = [...bodySource.matchAll(/<p[^>]*>\s*([\s\S]{20,600}?)\s*<\/p>/gi)]
+      .map(m => m[1].replace(/<[^>]+>/g,'').replace(/\s+/g,' ').trim())
+      .filter(t => t.length > 30 && !/^(cookie|copyright|all rights|©|\d{4})/i.test(t))
+      .slice(0, 5)
+      .join(' ')
+      .slice(0, 600);
+
     // Sub-links on this page (good proxy for what the page covers)
     const links = extractLinks(html, domain).slice(0, 24);
 
-    return { url: pageUrl, title, meta_desc, headings, card_titles: cardTitles, links };
+    return { url: pageUrl, title, meta_desc, headings, card_titles: cardTitles, body_text: bodyText, links };
   } catch {
     return null;
   }
@@ -353,6 +363,57 @@ Return ONLY a JSON array of strings, no explanation, no markdown:
 }
 
 /* ═══════════════════════════════════════════
+   CHAIN-OF-THOUGHT PRE-PASS
+   Reason about IA problems before generating JSON.
+   Output is injected as hidden context into Pass 2.
+═══════════════════════════════════════════ */
+async function reasonAboutIA(targetData, competitorData, briefText, industryLabel) {
+  const compSummary = competitorData.map(c =>
+    `- ${c.domain}: nav = [${(c.structured_nav || c.nav || []).slice(0, 8).map(l => l.text).join(', ')}]`
+  ).join('\n');
+
+  const innerSummary = (targetData.inner_pages || []).slice(0, 6).map(p =>
+    `  ${p.url}: headings=[${(p.headings||[]).slice(0,5).join(' / ')}]${p.body_text ? ` | body="${p.body_text.slice(0,120)}..."` : ''}`
+  ).join('\n');
+
+  const prompt = `You are a senior IA consultant. Before generating a proposed site structure, reason carefully about this website.
+
+COMPANY: ${targetData.title} (${targetData.domain})
+INDUSTRY: ${industryLabel}
+CURRENT NAV: ${(targetData.structured_nav || targetData.nav || []).slice(0,12).map(l=>l.text).join(' | ')}
+SITE SECTIONS: ${(targetData.site_sections||[]).slice(0,15).join(', ')}
+PAGE COUNT: ${targetData.page_count || 'unknown'}
+${briefText ? `CLIENT BRIEF: ${briefText.slice(0,400)}\n` : ''}
+INNER PAGE SAMPLES:
+${innerSummary}
+
+COMPETITOR NAV PATTERNS:
+${compSummary}
+
+Answer these 4 questions in plain prose (2-3 sentences each). Be specific — name actual nav items, pages, and product lines you can see.
+
+1. CURRENT IA PROBLEMS: What are the 3 most significant structural problems with the current navigation? (e.g. buried products, missing sections, jargon labels, wrong depth)
+
+2. CONTENT GAPS: What content areas or product lines are visible in inner pages / site sections but NOT surfaced in the primary nav? These are the key things being missed.
+
+3. COMPETITOR LESSONS: What specific navigation patterns do competitors use that this site should adopt? Be concrete — name the competitor and the pattern.
+
+4. IA STRATEGY: Given the company type, portfolio, and brief, what should the overall IA philosophy be? What are the 2-3 most important structural decisions?`;
+
+  try {
+    const response = await callClaude({
+      model: 'claude-sonnet-4-6',
+      max_tokens: 800,
+      messages: [{ role: 'user', content: prompt }],
+    });
+    return response.content[0].text.trim();
+  } catch (e) {
+    console.error('CoT pre-pass failed:', e);
+    return null;
+  }
+}
+
+/* ═══════════════════════════════════════════
    PASS 2 — IA STRUCTURE (Sonnet, full prompt)
 ═══════════════════════════════════════════ */
 async function synthesiseIA(targetData, competitorData, briefText, documentBase64, documentMediaType) {
@@ -424,7 +485,13 @@ Given scraped nav, sitemap URLs, inner page headings, and footer links from a re
   "rationale": "3-4 sentences explaining the overall IA strategy and key tradeoffs"
 }`;
 
-  const userText = `${briefText ? `## CLIENT BRIEF / PROJECT INTENT\n${briefText}\n\nFactor these requirements and constraints into every IA decision you make. If the brief names specific sections, products, or goals, ensure they are reflected in the proposed nav.\n\n` : ''}## TARGET SITE
+  // Run CoT reasoning in parallel (doesn't block, just enriches the prompt)
+  const cotReasoning = await reasonAboutIA(targetData, competitorData, briefText, industryHint.label);
+
+  const userText = `${briefText ? `## CLIENT BRIEF / PROJECT INTENT\n${briefText}\n\nFactor these requirements and constraints into every IA decision you make. If the brief names specific sections, products, or goals, ensure they are reflected in the proposed nav.\n\n` : ''}${cotReasoning ? `## STRATEGIC IA ANALYSIS (your own prior reasoning — build on this, don't contradict it)
+${cotReasoning}
+
+` : ''}## TARGET SITE
 ${JSON.stringify({
     domain: targetData.domain,
     title: targetData.title,
@@ -437,7 +504,8 @@ ${JSON.stringify({
     sitemap_sample: targetData.sitemap_urls?.slice(0, 60),
     inner_pages: (targetData.inner_pages || []).map(p => ({
       url: p.url, title: p.title, meta_desc: p.meta_desc,
-      headings: p.headings, card_titles: p.card_titles, links: p.links?.slice(0, 12),
+      headings: p.headings, card_titles: p.card_titles,
+      body_text: p.body_text, links: p.links?.slice(0, 12),
     })),
   })}
 
@@ -542,7 +610,7 @@ ${JSON.stringify({
     site_sections: targetData.site_sections?.slice(0, 20),
     sitemap_sample: targetData.sitemap_urls?.slice(0, 40),
     footer_links: targetData.footer_links?.slice(0, 15),
-    inner_pages: (targetData.inner_pages || []).map(p => ({ url: p.url, headings: p.headings })),
+    inner_pages: (targetData.inner_pages || []).map(p => ({ url: p.url, headings: p.headings, body_text: p.body_text })),
   })}
 
 ## COMPETITOR SITES
