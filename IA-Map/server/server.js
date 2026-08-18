@@ -412,14 +412,13 @@ Only include gaps that are genuinely meaningful for IA decisions. 5–9 gaps max
   try {
     const response = await callClaude({
       model: 'claude-sonnet-4-6',
-      max_tokens: 600,
+      max_tokens: 1000,
       messages: [{ role: 'user', content: prompt }],
     });
     const text = response.content[0].text.replace(/```json|```/g,'').trim();
     const match = text.match(/\[[\s\S]*\]/);
     if (match) return JSON.parse(match[0]);
-  } catch (e) { console.error('Competitor delta failed:', e); }
-  return [];
+  } catch (e) { console.error('Competitor delta failed:', e); return []; }
 }
 
 /* ═══════════════════════════════════════════
@@ -545,11 +544,13 @@ Given scraped nav, sitemap URLs, inner page headings, and footer links from a re
   "rationale": "3-4 sentences explaining the overall IA strategy and key tradeoffs"
 }`;
 
-  // Run CoT reasoning + competitor delta in parallel
-  const [cotReasoning, competitorDelta] = await Promise.all([
+  // Run CoT reasoning + competitor delta in parallel — failures are non-fatal
+  const [cotResult, deltaResult] = await Promise.allSettled([
     reasonAboutIA(targetData, competitorData, briefText, industryHint.label),
     buildCompetitorDelta(targetData, competitorData),
   ]);
+  const cotReasoning   = cotResult.status   === 'fulfilled' ? cotResult.value   : null;
+  const competitorDelta = deltaResult.status === 'fulfilled' ? deltaResult.value : [];
 
   const userText = `${briefText ? `## CLIENT BRIEF / PROJECT INTENT\n${briefText}\n\nFactor these requirements and constraints into every IA decision you make. If the brief names specific sections, products, or goals, ensure they are reflected in the proposed nav.\n\n` : ''}${cotReasoning ? `## STRATEGIC IA ANALYSIS (your own prior reasoning — build on this, don't contradict it)
 ${cotReasoning}
