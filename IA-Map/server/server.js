@@ -485,7 +485,7 @@ async function synthesiseIA(targetData, competitorData, briefText, documentBase6
 ## TASK
 Given scraped nav, sitemap URLs, inner page headings, and footer links from a real website, propose a best-in-class revamped IA. Use competitor sites as benchmarks for what good looks like in this industry.
 
-## CORE IA RULES (apply all 12)
+## CORE IA RULES (apply all 14)
 1. VISITOR NEED LABELS — primary nav items must be named from the visitor's perspective, not org structure. "Solutions" not "Business Units", "Who We Are" not "About Company".
 2. CAPS CONVENTION — all nav labels in TITLE CASE but rendered in CAPS in the JSON name field. e.g. "SOLUTIONS", "WHO WE ARE".
 3. STANDARD UTILITY NAV — always include: CONTACT, CAREERS. Add INVESTORS for listed companies. Add TRUST & SECURITY for fintech/regulated industries. Add NEWSROOM for companies with a media presence.
@@ -498,6 +498,27 @@ Given scraped nav, sitemap URLs, inner page headings, and footer links from a re
 10. INDUSTRY SIGNAL — ${industryHint.rule}
 11. FAILURE PATTERNS TO AVOID — do NOT: bury products 3 levels deep; create a "Miscellaneous" or "More" nav item; use internal jargon as nav labels; duplicate content across primary and utility nav; create L2 items with only one child.
 12. RATIONALE — always explain why each primary nav item was chosen in the rationale field. Reference competitor patterns where adopted.
+13. NO MARKETING-SPEAK LABELS — never use "Why [Company]", "Why Us", "Our Difference", "Our Story", "Our Approach" as standalone primary nav items. These are self-congratulatory and visitor-repelling. Fold proof points and differentiation into "WHO WE ARE" L2s (e.g. "Our Advantage", "Leadership", "Client Stories") or surface them as content within relevant sections. A visitor never navigates to "Why Us" — they navigate to what they need and discover the why along the way.
+14. CONVERSION PATHWAY — every proposed IA must include at least one explicit conversion entry point in the primary or utility nav. For B2B: "Talk to an Expert", "Request a Demo", or "Get Started" as a prominent action in CONTACT L2 or a sticky CTA label. For B2C: "Get Started", "Open Account", or "Apply Now" surfaced in primary nav actions. The desc and actions fields of the relevant nav item must name the conversion CTA explicitly — do not leave it implicit.
+
+## WORKED EXAMPLE (study this pattern — apply the same quality of thinking)
+INPUT — Current site: SS&C Technologies (ssctech.com)
+Current nav: [Solutions, Products, Services, About, News, Careers, Contact]
+Problems identified: org-chart structure, "Solutions/Products/Services" are three overlapping buckets, no audience segmentation, no trust signals, no conversion pathway visible.
+
+OUTPUT — Proposed IA:
+Primary nav:
+- WHO WE SERVE [L1] → Asset Managers / Hedge Funds / Private Equity / Insurance / Banks & Credit Unions / Government
+- CAPABILITIES [L1] → Fund Administration / Transfer Agency / Regulatory Reporting / Data & Analytics / Digital & CX / Technology Platform
+- TECHNOLOGY [L1] → Advent Portfolio / Black Diamond / Sylvan / Algorithmics / EVOLV / Integrations
+- INSIGHTS [L1] → Research & Reports / Webinars / Case Studies / Blog / Events
+Utility nav: NEWSROOM / CAREERS / INVESTORS / CONTACT (L2: Talk to an Expert / Existing Client Support / Partner With Us)
+
+Why this works:
+- "WHO WE SERVE" replaces the org-chart "Solutions/Products/Services" triple — visitor self-identifies by entity type, not by guessing which bucket their need falls into
+- "CAPABILITIES" surfaces what SS&C actually does at a service level — distinct from the technology platforms
+- "TECHNOLOGY" is separated because SS&C has named flagship platforms (Advent, Black Diamond) that prospects search for by name — burying them under "Products" loses SEO and recognition value
+- CONTACT L2 has explicit conversion CTAs — "Talk to an Expert" is the B2B conversion action, not a generic form
 
 ## OUTPUT SCHEMA (return ONLY valid JSON, no markdown, no explanation)
 {
