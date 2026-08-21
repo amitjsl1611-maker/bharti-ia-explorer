@@ -68,7 +68,10 @@ app.post('/', async (req, res) => {
 
     // Scrape competitors (shallow) in parallel — cap at 3
     const compResults = await Promise.allSettled(
-      comps.slice(0, 3).map(c => scrapeSite(`https://${c.domain}`, false).then(d => ({ ...d, meta: c })))
+      comps.slice(0, 3).map(c => {
+        const compUrl = c.domain.startsWith('http') ? c.domain : `https://${c.domain}`;
+        return scrapeSite(compUrl, false).then(d => ({ ...d, meta: c }));
+      })
     );
     const compData = compResults.filter(r => r.status === 'fulfilled').map(r => r.value);
 
@@ -311,30 +314,51 @@ function extractLinks(html, domain) {
 /* ═══════════════════════════════════════════
    COMPETITOR IDENTIFICATION
 ═══════════════════════════════════════════ */
+function extractDomain(input) {
+  try {
+    const withProto = input.startsWith('http') ? input : `https://${input}`;
+    return new URL(withProto).hostname.replace(/^www\./, '');
+  } catch {
+    return input.replace(/^www\./, '').split('/')[0];
+  }
+}
+
 async function identifyCompetitors(url, companyName, manualList) {
   const MAX_COMP = 3;
-  // If manual entries provided, resolve their real domains + fill remaining slots
   const manualRaw = (manualList || []).slice(0, MAX_COMP);
-  const needed = MAX_COMP - manualRaw.length;
 
-  let resolved = [];
-  if (manualRaw.length) {
+  // Split into URL entries (scrape directly) vs name/abbreviation entries (need Claude to resolve)
+  const urlEntries = manualRaw.filter(c => c.includes('.') || c.startsWith('http'));
+  const nameEntries = manualRaw.filter(c => !c.includes('.') && !c.startsWith('http'));
+
+  // URL entries: extract domain directly — no Claude call needed
+  const resolved = urlEntries.map(c => ({
+    name: extractDomain(c),
+    domain: extractDomain(c),
+    type: 'manual',
+  }));
+
+  // Name/abbreviation entries: ask Claude to resolve them
+  if (nameEntries.length) {
     try {
       const res = await callClaude({
         model: 'claude-sonnet-4-6',
         max_tokens: 400,
-        messages: [{ role: 'user', content: `Resolve these competitor names/abbreviations to their real company name and website domain:\n${manualRaw.join(', ')}\n\nReturn ONLY a JSON array (one entry per input, same order):\n[{"name":"Full Company Name","domain":"domain.com","type":"manual"}]` }],
+        messages: [{ role: 'user', content: `Resolve these competitor names/abbreviations to their real company name and primary website domain:\n${nameEntries.join(', ')}\n\nReturn ONLY a JSON array (one entry per input, same order):\n[{"name":"Full Company Name","domain":"domain.com","type":"manual"}]` }],
       });
       const txt = res.content[0].text.replace(/```json|```/g, '').trim();
       const m = txt.match(/\[[\s\S]*\]/);
-      if (m) resolved = JSON.parse(m[0]);
-    } catch (e) { console.error('Manual competitor resolve failed:', e); }
-    // Fallback: use raw strings if resolve failed
-    if (!resolved.length) resolved = manualRaw.map(c => ({ name: c, domain: c.replace(/^www\./, ''), type: 'manual' }));
+      if (m) resolved.push(...JSON.parse(m[0]));
+    } catch (e) {
+      console.error('Manual competitor resolve failed:', e);
+      nameEntries.forEach(c => resolved.push({ name: c, domain: c, type: 'manual' }));
+    }
   }
 
+  const needed = MAX_COMP - resolved.length;
   if (needed <= 0) return resolved.slice(0, MAX_COMP);
 
+  // Fill remaining slots with Claude-identified competitors
   try {
     const response = await callClaude({
       model: 'claude-sonnet-4-6',
