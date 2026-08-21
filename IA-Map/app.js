@@ -522,14 +522,25 @@ function toggleCompPanel() {
   const isOpen = panel.classList.toggle('open');
   if (floatBtn) floatBtn.classList.toggle('open', isOpen);
 
+  const labelEl = document.getElementById('comp-float-label');
+
   if (isOpen && !_analysisLoaded && !_analysisLoading && _scrapedCache) {
     _analysisLoading = true;
+    if (labelEl) labelEl.textContent = 'Analysing…';
+    if (floatBtn) floatBtn.style.opacity = '0.6';
     const cardsEl = document.getElementById('csp-cards');
     if (cardsEl) cardsEl.innerHTML = '<div style="padding:24px;color:#888;font-size:13px;">Generating analysis with Claude Sonnet…</div>';
     runPass3()
-      .then(() => { _analysisLoaded = true; _analysisLoading = false; })
+      .then(() => {
+        _analysisLoaded = true;
+        _analysisLoading = false;
+        if (labelEl) labelEl.textContent = 'Go Deeper';
+        if (floatBtn) floatBtn.style.opacity = '';
+      })
       .catch(err => {
         _analysisLoading = false;
+        if (labelEl) labelEl.textContent = 'Go Deeper';
+        if (floatBtn) floatBtn.style.opacity = '';
         if (cardsEl) cardsEl.innerHTML = `<div style="padding:24px;color:#c00;font-size:13px;">Analysis failed: ${err.message}</div>`;
       });
   }
