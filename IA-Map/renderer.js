@@ -88,8 +88,9 @@ function assignCoordinates(proposed) {
         l2.cx = curX + CW / 2 + i * SLOT;
         if (l2.l3 && l2.l3.length) {
           const l3n = l2.l3.length;
+          const L3_SLOT = 200;
           l2.l3.forEach((l3, j) => {
-            l3.cx = l2.cx - Math.floor((l3n - 1) / 2) * SLOT + j * SLOT;
+            l3.cx = l2.cx - Math.floor((l3n - 1) / 2) * L3_SLOT + j * L3_SLOT;
           });
         }
       });
@@ -321,7 +322,7 @@ function buildCanvas(totalWidth, canvasH) {
         l2.l3.forEach(l3 => {
           addDot(l3.cx, L3_SY);
           addLine(l3.cx, L3_SY, l3.cx, L3_Y);
-          const l3p = pill(l3.name, 'pill-l3', l3.cx, L3_Y, CW - 30, 26, {
+          const l3p = pill(l3.name, 'pill-l3', l3.cx, L3_Y, 180, 26, {
             l2sec: sec.id,
             level: 'l3',
           });
