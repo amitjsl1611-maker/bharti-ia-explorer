@@ -311,11 +311,11 @@ function buildCanvas(totalWidth, canvasH) {
       l2c.dataset.level = 'l2';
       l2c.style.display = 'none'; // hidden until revealL2()
 
-      // L3 pages
+      // L3 pages — connector runs from below L2 pill (not from card bottom, which varies)
       if (l2.l3 && l2.l3.length) {
         const l3cxs = l2.l3.map(p => p.cx);
         const l3L = Math.min(...l3cxs), l3R = Math.max(...l3cxs);
-        addLine(l2.cx, L2_CARD_Y + 280, l2.cx, L3_SY);
+        addLine(l2.cx, L2_Y + 30, l2.cx, L3_SY);
         addDot(l2.cx, L3_SY);
         if (l3L !== l3R) addLine(l3L, L3_SY, l3R, L3_SY);
         l2.l3.forEach(l3 => {
