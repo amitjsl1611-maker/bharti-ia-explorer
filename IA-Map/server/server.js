@@ -43,8 +43,8 @@ app.post('/', async (req, res) => {
     }
 
     if (action === 'synthesise') {
-      const { brief_text, document_base64, document_media_type } = req.body;
-      const result = await synthesiseIA(targetData, competitorData, brief_text, document_base64, document_media_type);
+      const { brief_text, document_base64, document_media_type, must_include, must_exclude } = req.body;
+      const result = await synthesiseIA(targetData, competitorData, brief_text, document_base64, document_media_type, must_include, must_exclude);
       return res.json(result);
     }
 
@@ -491,13 +491,19 @@ Answer these 4 questions in plain prose (2-3 sentences each). Be specific — na
 /* ═══════════════════════════════════════════
    PASS 2 — IA STRUCTURE (Sonnet, full prompt)
 ═══════════════════════════════════════════ */
-async function synthesiseIA(targetData, competitorData, briefText, documentBase64, documentMediaType) {
+async function synthesiseIA(targetData, competitorData, briefText, documentBase64, documentMediaType, mustInclude, mustExclude) {
 
   // Detect industry from nav/title/meta for tailored rules
   const industryHint = detectIndustry(targetData);
 
-  const system = `You are a Principal Information Architect with 15+ years designing navigation and site structure for large organisations. Your output is used directly in client presentations.
+  // Hard nav constraints injected as non-negotiable rules
+  const hardConstraints = [
+    mustInclude ? `MANDATORY INCLUSIONS — these nav items MUST appear in the proposed IA (as L1 or prominent L2). No exceptions: ${mustInclude}` : null,
+    mustExclude ? `MANDATORY EXCLUSIONS — these nav items MUST NOT appear anywhere in the proposed IA. Remove entirely: ${mustExclude}` : null,
+  ].filter(Boolean).join('\n');
 
+  const system = `You are a Principal Information Architect with 15+ years designing navigation and site structure for large organisations. Your output is used directly in client presentations.
+${hardConstraints ? `\n## CLIENT-MANDATED NAV CONSTRAINTS (non-negotiable — override your own judgement if needed)\n${hardConstraints}\n` : ''}
 ## TASK
 Given scraped nav, sitemap URLs, inner page headings, and footer links from a real website, propose a best-in-class revamped IA. Use competitor sites as benchmarks for what good looks like in this industry.
 

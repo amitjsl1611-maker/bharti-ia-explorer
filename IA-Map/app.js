@@ -351,6 +351,8 @@ async function runPass2() {
   if (synthBar) synthBar.style.display = '';
 
   const brief = document.getElementById('brief-text').value.trim();
+  const mustInclude = document.getElementById('must-include')?.value.trim();
+  const mustExclude = document.getElementById('must-exclude')?.value.trim();
 
   const response = await fetch(WORKER_URL, {
     method: 'POST',
@@ -360,6 +362,8 @@ async function runPass2() {
       targetData,
       competitorData,
       brief_text: brief || undefined,
+      must_include: mustInclude || undefined,
+      must_exclude: mustExclude || undefined,
       document_base64: briefFileBase64 || undefined,
       document_media_type: briefFileMediaType || undefined,
     }),
@@ -483,6 +487,8 @@ function goBack() {
   document.getElementById('url-error').textContent = '';
   document.getElementById('brief-text').value = '';
   document.getElementById('file-name').textContent = '';
+  const mi = document.getElementById('must-include'); if (mi) mi.value = '';
+  const me = document.getElementById('must-exclude'); if (me) me.value = '';
   document.getElementById('brief-file').value = '';
   const c = document.getElementById('canvas');
   const s = document.getElementById('sm-canvas');

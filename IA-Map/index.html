@@ -74,6 +74,26 @@
           </button>
           <span id="file-name" class="wiz-file-name"></span>
         </div>
+        <div class="nav-constraints-wrap">
+          <div class="nav-constraints-label">Nav constraints <span class="wiz-opt">optional</span></div>
+          <div class="nav-constraints-row">
+            <div class="nav-constraint-col">
+              <label class="nav-constraint-head">
+                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#1A8040" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                Must include
+              </label>
+              <input id="must-include" type="text" placeholder="e.g. Sustainability, ESG, Careers">
+            </div>
+            <div class="nav-constraint-col">
+              <label class="nav-constraint-head">
+                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#c0392b" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                Must exclude
+              </label>
+              <input id="must-exclude" type="text" placeholder="e.g. Investors, Media Centre">
+            </div>
+          </div>
+          <p class="nav-constraint-hint">Comma-separated nav items. These are treated as hard rules — not suggestions.</p>
+        </div>
         <div class="wiz-actions">
           <button class="wiz-back-btn" onclick="goToStep(1)">← Back</button>
           <button class="wiz-next-btn" onclick="goToStep(3)">
