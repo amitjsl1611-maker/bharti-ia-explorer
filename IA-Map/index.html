@@ -64,8 +64,11 @@
       <!-- ── Step 2: Brief / Document ── -->
       <div class="wiz-panel" id="ws-2">
         <div class="wiz-step-label">Project brief <span class="wiz-opt">optional</span></div>
-        <p class="wiz-step-sub">Share a POC doc, SOW, or key goals — Claude will factor them into the proposed IA</p>
-        <textarea id="brief-text" rows="5" placeholder="Paste any brief, goals, constraints, or key requirements here…"></textarea>
+        <p class="wiz-step-sub">Share key goals or constraints — or attach a PDF for the full SOW. Word docs should be exported to PDF first.</p>
+        <div class="brief-text-wrap">
+          <textarea id="brief-text" rows="4" maxlength="2800" placeholder="Paste goals, constraints, or key requirements… (400 words max)" oninput="updateWordCount()"></textarea>
+          <div class="brief-word-count"><span id="brief-word-num">0</span> / 400 words</div>
+        </div>
         <div class="wiz-upload-row">
           <input type="file" id="brief-file" accept=".pdf,.txt" style="display:none">
           <button class="wiz-upload-btn" onclick="triggerFileUpload()">

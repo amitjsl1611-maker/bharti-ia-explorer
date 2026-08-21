@@ -81,6 +81,21 @@ function triggerFileUpload() {
   document.getElementById('brief-file').click();
 }
 
+function updateWordCount() {
+  const ta = document.getElementById('brief-text');
+  const numEl = document.getElementById('brief-word-num');
+  if (!ta || !numEl) return;
+  const words = ta.value.trim() === '' ? 0 : ta.value.trim().split(/\s+/).length;
+  numEl.textContent = words;
+  numEl.style.color = words > 400 ? '#c0392b' : words > 350 ? '#e67e22' : '#999';
+  // Enforce limit: trim to 400 words if exceeded
+  if (words > 400) {
+    ta.value = ta.value.trim().split(/\s+/).slice(0, 400).join(' ');
+    numEl.textContent = 400;
+    numEl.style.color = '#c0392b';
+  }
+}
+
 document.getElementById('brief-file').addEventListener('change', function () {
   const file = this.files[0];
   if (!file) return;
