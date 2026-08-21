@@ -13,6 +13,7 @@ const WORKER_URL = 'https://bharti-ia-explorer-production.up.railway.app';
 let manualCompetitors  = [];
 let competitorsPanelOpen = false;
 let _scrapedCache      = null;
+try { const s = localStorage.getItem('ia_scraped_cache'); if (s) _scrapedCache = JSON.parse(s); } catch (_) {}
 let _analysisLoaded    = false;
 let _analysisLoading   = false;
 
@@ -303,6 +304,7 @@ async function runPass1(url, domain) {
 
   const data = await response.json();
   _scrapedCache = data;
+  try { localStorage.setItem('ia_scraped_cache', JSON.stringify(data)); } catch (_) {}
 
   // ── Show actual results from the scrape ──
   const pageCount = data.targetData?.page_count || 0;
@@ -384,7 +386,7 @@ async function runPass3() {
   }
 
   let analysis;
-  try { analysis = await response.json(); } catch { return; } // silent fail on analysis
+  try { analysis = await response.json(); } catch (e) { throw new Error('Analysis returned invalid data. Try opening the panel again.'); }
   if (window._currentIAData) {
     window._currentIAData.ia_changes = analysis.ia_changes || [];
     window._currentIAData.competitors = analysis.competitors || [];
