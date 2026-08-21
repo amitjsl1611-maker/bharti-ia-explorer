@@ -323,6 +323,13 @@ async function runPass1(url, domain) {
   const compCount = (data.competitorData || []).length;
   if (compCount) addLog(`${compCount} competitor site${compCount > 1 ? 's' : ''} scraped successfully`, 'done');
 
+  // Update ETA based on actual page count
+  const etaEl = document.getElementById('loading-eta');
+  if (etaEl && pageCount) {
+    const secs = pageCount > 300 ? '60–90 seconds' : pageCount > 100 ? '45–75 seconds' : '30–50 seconds';
+    etaEl.textContent = `Estimated time remaining: ${secs}`;
+  }
+
   // ── Auto-advance to Pass 2 ──
   await runPass2();
 }
@@ -340,11 +347,8 @@ async function runPass2() {
   schedLog(18000, `Building L1 → L2 → L3 nav structure…`);
   schedLog(30000, `Finalising rationale and best practices…`);
   // Pulsing progress bar so screen doesn't look frozen during synthesis
-  const synthBar = document.createElement('div');
-  synthBar.id = 'synth-progress-bar';
-  synthBar.innerHTML = '<div class="synth-bar-fill"></div>';
-  const log = document.getElementById('loading-log');
-  if (log) log.appendChild(synthBar);
+  const synthBar = document.getElementById('synth-progress-bar');
+  if (synthBar) synthBar.style.display = '';
 
   const brief = document.getElementById('brief-text').value.trim();
 
@@ -372,7 +376,7 @@ async function runPass2() {
   }
   if (!data || !data.proposed_ia) throw new Error('Invalid IA response from server. Please try again.');
 
-  document.getElementById('synth-progress-bar')?.remove();
+  const sb = document.getElementById('synth-progress-bar'); if (sb) sb.style.display = 'none';
   updateLogRow(rowSynth, 'Proposed IA generated', 'done');
   addLog('Rendering interactive prototype…', 'active');
   renderResult(data);

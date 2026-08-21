@@ -312,24 +312,40 @@ function extractLinks(html, domain) {
    COMPETITOR IDENTIFICATION
 ═══════════════════════════════════════════ */
 async function identifyCompetitors(url, companyName, manualList) {
-  const manual = (manualList || []).map(c => ({
-    domain: c.startsWith('http') ? new URL(c).hostname : c.replace(/^www\./, ''),
-    name: c, type: 'manual',
-  }));
   const MAX_COMP = 3;
-  if (manual.length >= MAX_COMP) return manual.slice(0, MAX_COMP);
-  const needed = MAX_COMP - manual.length;
+  // If manual entries provided, resolve their real domains + fill remaining slots
+  const manualRaw = (manualList || []).slice(0, MAX_COMP);
+  const needed = MAX_COMP - manualRaw.length;
+
+  let resolved = [];
+  if (manualRaw.length) {
+    try {
+      const res = await callClaude({
+        model: 'claude-sonnet-4-6',
+        max_tokens: 400,
+        messages: [{ role: 'user', content: `Resolve these competitor names/abbreviations to their real company name and website domain:\n${manualRaw.join(', ')}\n\nReturn ONLY a JSON array (one entry per input, same order):\n[{"name":"Full Company Name","domain":"domain.com","type":"manual"}]` }],
+      });
+      const txt = res.content[0].text.replace(/```json|```/g, '').trim();
+      const m = txt.match(/\[[\s\S]*\]/);
+      if (m) resolved = JSON.parse(m[0]);
+    } catch (e) { console.error('Manual competitor resolve failed:', e); }
+    // Fallback: use raw strings if resolve failed
+    if (!resolved.length) resolved = manualRaw.map(c => ({ name: c, domain: c.replace(/^www\./, ''), type: 'manual' }));
+  }
+
+  if (needed <= 0) return resolved.slice(0, MAX_COMP);
+
   try {
     const response = await callClaude({
       model: 'claude-sonnet-4-6',
       max_tokens: 400,
-      messages: [{ role: 'user', content: `Company: "${companyName}" (URL: ${url})\nIdentify exactly ${needed} competitor(s) for IA benchmarking. Pick companies known for best-in-class website IA in the same industry — mix of global and regional peers.\nReturn ONLY a JSON array:\n[{"name":"Company Name","domain":"domain.com","type":"global|local"}]` }],
+      messages: [{ role: 'user', content: `Company: "${companyName}" (URL: ${url})\nAlready benchmarking: ${resolved.map(c => c.name).join(', ') || 'none'}.\nIdentify exactly ${needed} additional competitor(s) for IA benchmarking — different from the ones already listed. Best-in-class website IA in the same industry.\nReturn ONLY a JSON array:\n[{"name":"Company Name","domain":"domain.com","type":"global|local"}]` }],
     });
     const text = response.content[0].text;
     const jsonMatch = text.replace(/```json|```/g, '').trim().match(/\[[\s\S]*\]/);
-    if (jsonMatch) return [...manual, ...JSON.parse(jsonMatch[0])].slice(0, MAX_COMP);
+    if (jsonMatch) return [...resolved, ...JSON.parse(jsonMatch[0])].slice(0, MAX_COMP);
   } catch (e) { console.error('Competitor ID failed:', e); }
-  return manual;
+  return resolved;
 }
 
 /* ═══════════════════════════════════════════
