@@ -610,7 +610,7 @@ ${competitorDelta.map(g =>
   `- ${g.gap} [${g.recommendation.toUpperCase()}] — seen at: ${g.competitors_with_it.join(', ')} — ${g.reason}`
 ).join('\n')}
 
-` : ''}Apply all 12 rules. Surface every distinct product line and capability as at minimum an L2. For every gap marked ADOPT above, ensure it appears in the proposed IA. Return ONLY the JSON.`;
+` : ''}Apply all 14 rules. No marketing-speak labels. Include explicit conversion CTA. Surface every distinct product line as at minimum an L2. For every gap marked ADOPT above, ensure it appears in the proposed IA. Return ONLY the JSON.`;
 
   // Build content array — include uploaded document if provided
   const userContent = [];
@@ -626,14 +626,37 @@ ${competitorDelta.map(g =>
 
   const response = await callClaude({
     model: 'claude-sonnet-4-6',
-    max_tokens: 8000,
+    max_tokens: 10000,
     system,
     messages: [{ role: 'user', content: userContent }],
   });
-  const cleaned = response.content[0].text.replace(/```json|```/g, '').trim();
-  const jsonMatch = cleaned.match(/\{[\s\S]*\}/);
-  if (!jsonMatch) throw new Error('AI returned invalid JSON structure');
-  return JSON.parse(jsonMatch[0]);
+
+  const raw = response.content[0].text.replace(/```json|```/g, '').trim();
+  const jsonMatch = raw.match(/\{[\s\S]*/);
+  if (!jsonMatch) throw new Error('AI returned no JSON');
+
+  let jsonStr = jsonMatch[0];
+
+  // Repair truncated JSON — close any unclosed brackets/braces
+  if (response.stop_reason === 'max_tokens') {
+    console.warn('synthesiseIA: hit max_tokens, attempting JSON repair');
+    const opens  = (jsonStr.match(/[\[{]/g) || []).length;
+    const closes = (jsonStr.match(/[\]}]/g) || []).length;
+    let diff = opens - closes;
+    // Strip trailing incomplete property/value
+    jsonStr = jsonStr.replace(/,\s*"[^"]*"?\s*:?\s*[^,}\]]*$/, '');
+    while (diff > 0) {
+      const lastOpen = [...jsonStr].reverse().find(c => c === '[' || c === '{');
+      jsonStr += lastOpen === '[' ? ']' : '}';
+      diff--;
+    }
+  }
+
+  try {
+    return JSON.parse(jsonStr);
+  } catch {
+    throw new Error('AI returned malformed JSON even after repair — try again');
+  }
 }
 
 /* ═══════════════════════════════════════════
