@@ -557,6 +557,7 @@ function toggleCompPanel() {
   if (!panel) return;
   const isOpen = panel.classList.toggle('open');
   if (floatBtn) floatBtn.classList.toggle('open', isOpen);
+  document.body.classList.toggle('panel-open', isOpen);
 
   const labelEl = document.getElementById('comp-float-label');
 

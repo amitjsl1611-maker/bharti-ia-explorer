@@ -521,8 +521,10 @@ body.sitemap .ia-el{opacity:0;pointer-events:none;}
   border:1px solid rgba(0,0,0,.09);border-radius:12px;
   box-shadow:0 4px 20px rgba(0,0,0,.13);
   display:flex;flex-direction:column;align-items:center;overflow:hidden;
-  width:44px;z-index:200;
+  width:44px;z-index:210;
+  transition:right .35s cubic-bezier(.4,0,.2,1);
 }
+body.panel-open #zoom-island{ right:620px; }
 #zoom-island button{
   width:44px;height:40px;border:none;background:transparent;cursor:pointer;
   font-size:16px;font-weight:300;color:#555;

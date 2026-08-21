@@ -787,14 +787,27 @@ Generate minimum 10 ia_changes rows and 5-6 findings per competitor. Be evidence
 
   const response = await callClaude({
     model: 'claude-sonnet-4-6',
-    max_tokens: 5000,
+    max_tokens: 8000,
     system,
     messages: [{ role: 'user', content: user }],
   });
-  const cleaned = response.content[0].text.replace(/```json|```/g, '').trim();
+  let cleaned = response.content[0].text.replace(/```json|```/g, '').trim();
   const jsonMatch = cleaned.match(/\{[\s\S]*\}/);
   if (!jsonMatch) throw new Error('AI returned invalid JSON for analysis');
-  return JSON.parse(jsonMatch[0]);
+  let jsonStr = jsonMatch[0];
+  // Repair truncated JSON if max_tokens hit
+  if (response.stop_reason === 'max_tokens') {
+    jsonStr = jsonStr.replace(/,\s*"[^"]*"?\s*:?\s*[^,}\]]*$/, '');
+    const opens = (jsonStr.match(/[\[{]/g) || []);
+    const closes = (jsonStr.match(/[\]\}]/g) || []);
+    let diff = opens.length - closes.length;
+    while (diff > 0) {
+      const lastOpen = [...jsonStr].reverse().find(c => c === '[' || c === '{');
+      jsonStr += lastOpen === '[' ? ']' : '}';
+      diff--;
+    }
+  }
+  return JSON.parse(jsonStr);
 }
 
 /* ═══════════════════════════════════════════
