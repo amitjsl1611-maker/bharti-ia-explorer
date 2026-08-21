@@ -313,8 +313,12 @@ async function runPass1(url, domain) {
     `${domain} scraped — ${pageCount ? pageCount + ' pages in sitemap' : 'homepage + nav extracted'}${innerPages ? ', ' + innerPages + ' inner pages read' : ''}`,
     'done');
 
-  const compNames = (data.competitors || []).map(c => c.name || c.domain).join(', ');
-  if (compNames) addLog(`Competitors identified: ${compNames}`, 'done');
+  const compNames = (data.competitors || []).map(c => c.name || c.domain);
+  if (compNames.length) {
+    const chips = compNames.map(n => `<span class="ll-comp-chip">${n}</span>`).join('');
+    const row = addLog(`Benchmarking against: ${chips}`, 'done');
+    if (row) row.classList.add('ll-comp-highlight');
+  }
 
   const compCount = (data.competitorData || []).length;
   if (compCount) addLog(`${compCount} competitor site${compCount > 1 ? 's' : ''} scraped successfully`, 'done');
@@ -335,6 +339,12 @@ async function runPass2() {
   schedLog(8000,  `Applying 12 IA rules and industry-specific patterns…`);
   schedLog(18000, `Building L1 → L2 → L3 nav structure…`);
   schedLog(30000, `Finalising rationale and best practices…`);
+  // Pulsing progress bar so screen doesn't look frozen during synthesis
+  const synthBar = document.createElement('div');
+  synthBar.id = 'synth-progress-bar';
+  synthBar.innerHTML = '<div class="synth-bar-fill"></div>';
+  const log = document.getElementById('loading-log');
+  if (log) log.appendChild(synthBar);
 
   const brief = document.getElementById('brief-text').value.trim();
 
@@ -362,6 +372,7 @@ async function runPass2() {
   }
   if (!data || !data.proposed_ia) throw new Error('Invalid IA response from server. Please try again.');
 
+  document.getElementById('synth-progress-bar')?.remove();
   updateLogRow(rowSynth, 'Proposed IA generated', 'done');
   addLog('Rendering interactive prototype…', 'active');
   renderResult(data);
